@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>원료 수불 관리 프로그램</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- SheetJS 라이브러리 추가 (엑셀 저장용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin: 2rem 0;
+        }
+        .table-cell {
+            padding: 0.75rem;
+            vertical-align: middle;
+            font-size: 0.875rem;
+            white-space: nowrap;
+        }
+        #inventory-list tr, #receiving-list tr, #issuing-list tr {
+            cursor: pointer;
+        }
+        .sortable {
+            cursor: pointer;
+            position: relative;
+        }
+        .sortable::after { content: '↕'; position: absolute; right: 10px; color: #9ca3af; opacity: 0.5; }
+        .sortable.asc::after { content: '↑'; opacity: 1; }
+        .sortable.desc::after { content: '↓'; opacity: 1; }
+
+        /* 인쇄용 스타일 */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background-color: white;
+            }
+            #app {
+                padding: 0;
+            }
+            #content-area > div {
+                display: none !important;
+            }
+            #content-area > div:not(.hidden) {
+                display: block !important;
+                box-shadow: none;
+                padding: 0;
+            }
+            table {
+                font-size: 10px;
+                border-collapse: collapse;
+            }
+            .table-cell, th, td {
+                border: 1px solid #ddd;
+                padding: 4px;
+            }
+            th.no-print-col, td.no-print-col {
+                display: none; /* 작업 열 숨기기 */
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="app" class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8 no-print">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">원료 수불 관리 프로그램</h1>
+            <p class="text-gray-600 mt-2">원료의 입고, 출고 및 재고를 실시간으로 관리합니다.</p>
+            <div class="mt-6 flex justify-center gap-4">
+                <button id="print-btn" class="bg-gray-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-colors">인쇄</button>
+                <button id="save-btn" class="bg-teal-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-teal-700 transition-colors">엑셀로 저장</button>
+            </div>
+        </header>
+
+        <!-- 입고 관리 -->
+        <div class="bg-white p-6 rounded-lg shadow-lg mb-8 no-print">
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2">원료 입고 등록</h2>
+            <form id="receiving-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <input type="date" id="receive-date" class="p-2 border rounded" required>
+                <input type="text" id="receive-material-name" placeholder="원료명" class="p-2 border rounded" required>
+                <input type="text" id="receive-material-code" placeholder="원료 코드" class="p-2 border rounded" required>
+                <input type="text" id="receive-test-no" placeholder="시험의뢰번호" class="p-2 border rounded" required>
+                <input type="number" id="receive-quantity" placeholder="입고량" min="0" class="p-2 border rounded" required>
+                <input type="text" id="receive-supplier" placeholder="업체명" class="p-2 border rounded">
+                <input type="date" id="receive-expiry-date" class="p-2 border rounded" required>
+                <input type="text" id="receive-remarks" placeholder="비고" class="p-2 border rounded md:col-span-2 lg:col-span-1">
+                <button type="submit" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition duration-300 md:col-span-2 lg:col-span-3">입고 등록</button>
+            </form>
+        </div>
+
+        <!-- 탭 메뉴 -->
+        <div class="mb-8 no-print">
+            <div class="flex border-b">
+                <button id="tab-inventory" class="py-2 px-4 bg-white font-semibold text-blue-600 border-b-2 border-blue-600">실시간 재고 현황</button>
+                <button id="tab-receiving" class="py-2 px-4 text-gray-500 font-semibold hover:text-blue-600">입고 내역</button>
+                <button id="tab-issuing" class="py-2 px-4 text-gray-500 font-semibold hover:text-blue-600">출고 내역</button>
+            </div>
+        </div>
+
+        <!-- 컨텐츠 영역 -->
+        <div id="content-area">
+            <!-- 실시간 재고 현황 -->
+            <div id="inventory-content" class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex flex-wrap gap-4 items-center mb-4">
+                    <h3 class="text-xl font-bold">실시간 재고 현황</h3>
+                    <input type="text" id="inventory-search" placeholder="원료명/코드 검색 (초성 가능)" class="p-2 border rounded w-full md:w-auto flex-grow no-print">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-200">
+                            <tr>
+                                <th class="table-cell sortable" data-sort="name">원료명</th>
+                                <th class="table-cell sortable" data-sort="code">원료 코드</th>
+                                <th class="table-cell sortable" data-sort="totalReceived">총 입고량</th>
+                                <th class="table-cell sortable" data-sort="totalIssued">총 출고량</th>
+                                <th class="table-cell sortable" data-sort="currentStock">현재고</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-list"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 입고 내역 -->
+            <div id="receiving-content" class="bg-white p-6 rounded-lg shadow-lg hidden">
+                <div class="flex flex-wrap gap-4 items-center mb-4">
+                    <h3 class="text-xl font-bold">입고 내역</h3>
+                    <input type="text" id="receiving-search" placeholder="원료명/코드/업체명 등 검색" class="p-2 border rounded w-full md:w-auto flex-grow no-print">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-200">
+                            <tr>
+                                <th class="table-cell sortable" data-sort="date">입고일</th>
+                                <th class="table-cell sortable" data-sort="materialName">원료명</th>
+                                <th class="table-cell sortable" data-sort="materialCode">원료 코드</th>
+                                <th class="table-cell">시험의뢰번호</th>
+                                <th class="table-cell sortable" data-sort="quantity">입고량</th>
+                                <th class="table-cell sortable" data-sort="remainingStock">남은 재고</th>
+                                <th class="table-cell sortable" data-sort="supplier">업체명</th>
+                                <th class="table-cell sortable" data-sort="expiryDate">유통기한</th>
+                                <th class="table-cell sortable" data-sort="remainingDays">잔여일</th>
+                                <th class="table-cell">비고</th>
+                                <th class="table-cell no-print-col">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receiving-list"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 출고 내역 -->
+            <div id="issuing-content" class="bg-white p-6 rounded-lg shadow-lg hidden">
+                 <div class="flex flex-wrap gap-4 items-center mb-4">
+                    <h3 class="text-xl font-bold">출고 내역</h3>
+                    <input type="text" id="issuing-search" placeholder="원료명/코드/제품명 등 검색" class="p-2 border rounded w-full md:w-auto flex-grow no-print">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-200">
+                            <tr>
+                                <th class="table-cell sortable" data-sort="date">출고일</th>
+                                <th class="table-cell sortable" data-sort="materialName">원료명</th>
+                                <th class="table-cell sortable" data-sort="materialCode">원료 코드</th>
+                                <th class="table-cell">시험번호</th>
+                                <th class="table-cell sortable" data-sort="quantity">출고량</th>
+                                <th class="table-cell sortable" data-sort="productName">제품명</th>
+                                <th class="table-cell">제조번호</th>
+                                <th class="table-cell">비고</th>
+                            </tr>
+                        </thead>
+                        <tbody id="issuing-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 출고 처리 모달 -->
+    <div id="issue-modal" class="modal-backdrop hidden no-print">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3 class="text-xl font-bold mb-4">원료 출고 처리</h3>
+            <form id="issuing-form">
+                <input type="hidden" id="issue-receiving-id">
+                <div class="mb-4"><label class="block mb-1">원료명</label><p id="issue-modal-material-name" class="font-semibold"></p></div>
+                <div class="mb-4"><label class="block mb-1">원료 코드</label><p id="issue-modal-material-code" class="font-semibold"></p></div>
+                <div class="mb-4"><label class="block mb-1">해당 배치 재고</label><p id="issue-modal-batch-stock" class="font-semibold"></p></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="date" id="issue-date" class="p-2 border rounded" required>
+                    <input type="number" id="issue-quantity" placeholder="출고량" min="1" class="p-2 border rounded" required>
+                    <input type="text" id="issue-test-no" placeholder="시험번호" class="p-2 border rounded" required>
+                    <input type="text" id="issue-product-name" placeholder="제품명" class="p-2 border rounded">
+                    <input type="text" id="issue-mfg-no" placeholder="제조번호" class="p-2 border rounded">
+                    <input type="text" id="issue-remarks" placeholder="비고" class="p-2 border rounded md:col-span-2">
+                </div>
+                <div class="mt-6 flex justify-end gap-4">
+                    <button type="button" id="cancel-issue" class="bg-gray-300 text-gray-800 p-2 rounded hover:bg-gray-400">취소</button>
+                    <button type="submit" class="bg-green-600 text-white p-2 rounded hover:bg-green-700">출고 처리</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 재고 상세 정보 모달 -->
+    <div id="detail-modal" class="modal-backdrop hidden no-print">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="detail-modal-title" class="text-2xl font-bold">재고 상세 내역</h3>
+                <button id="close-detail-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <div class="mb-8">
+                <h4 class="text-lg font-semibold mb-2 border-b pb-1">입고 내역</h4>
+                <div class="overflow-x-auto max-h-60"><table class="w-full text-left border-collapse"><thead class="bg-gray-200 sticky top-0"><tr><th class="table-cell">입고일</th><th class="table-cell">시험의뢰번호</th><th class="table-cell">입고량</th><th class="table-cell">업체명</th><th class="table-cell">유통기한</th><th class="table-cell">비고</th></tr></thead><tbody id="detail-receiving-list"></tbody></table></div>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold mb-2 border-b pb-1">출고 내역</h4>
+                <div class="overflow-x-auto max-h-60"><table class="w-full text-left border-collapse"><thead class="bg-gray-200 sticky top-0"><tr><th class="table-cell">출고일</th><th class="table-cell">시험번호</th><th class="table-cell">출고량</th><th class="table-cell">제품명</th><th class="table-cell">제조번호</th><th class="table-cell">비고</th></tr></thead><tbody id="detail-issuing-list"></tbody></table></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 비밀번호 입력 모달 -->
+    <div id="password-modal" class="modal-backdrop hidden no-print">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 class="text-xl font-bold mb-4">비밀번호 입력</h3>
+            <p class="text-gray-600 mb-4">파일을 저장하려면 비밀번호를 입력하세요.</p>
+            <form id="password-form">
+                <input type="password" id="password-input" class="p-2 border rounded w-full" placeholder="비밀번호" required>
+                <div id="password-error" class="text-red-500 text-sm mt-2 hidden">비밀번호가 일치하지 않습니다.</div>
+                <div class="mt-6 flex justify-end gap-4">
+                    <button type="button" id="cancel-password" class="bg-gray-300 text-gray-800 p-2 rounded hover:bg-gray-400">취소</button>
+                    <button type="submit" class="bg-teal-600 text-white p-2 rounded hover:bg-teal-700">확인</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase SDK imports and config
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // --- Global State ---
+        let app, db, auth, userId, appId;
+        let receivingCollection, issuingCollection;
+        let globalReceivingData = [];
+        let globalIssuingData = [];
+        let sortState = {};
+        let isDbReady = false;
+
+        // --- Firebase Initialization & Auth ---
+        try {
+            const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+            if (firebaseConfigStr === '{}') {
+                throw new Error("Firebase config is not available.");
+            }
+            const firebaseConfig = JSON.parse(firebaseConfigStr);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            isDbReady = true;
+
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    userId = user.uid;
+                    initializeCollections();
+                    loadAndRenderData();
+                } else {
+                    signInAnonymously(auth).catch(error => console.error("Anonymous sign-in failed:", error));
+                }
+            });
+
+        } catch (e) {
+            console.error("Firebase initialization failed:", e);
+            document.addEventListener('DOMContentLoaded', () => {
+                const errorBanner = document.createElement('div');
+                errorBanner.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 no-print';
+                errorBanner.setAttribute('role', 'alert');
+                errorBanner.innerHTML = `<p class="font-bold">데이터베이스 연결 실패</p><p>Firebase 초기화 설정이 없어 데이터를 저장하거나 불러올 수 없습니다. 프로그램은 UI 데모 모드로 실행됩니다.</p>`;
+                const appDiv = document.getElementById('app');
+                if (appDiv) appDiv.prepend(errorBanner);
+            });
+        }
+        
+        // --- UI Elements ---
+        const printBtn = document.getElementById('print-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const passwordModal = document.getElementById('password-modal');
+        const passwordForm = document.getElementById('password-form');
+        const passwordInput = document.getElementById('password-input');
+        const passwordError = document.getElementById('password-error');
+        const cancelPasswordBtn = document.getElementById('cancel-password');
+        const receivingForm = document.getElementById('receiving-form');
+        const issuingForm = document.getElementById('issuing-form');
+        const receivingList = document.getElementById('receiving-list');
+        const issuingList = document.getElementById('issuing-list');
+        const inventoryList = document.getElementById('inventory-list');
+        const issueModal = document.getElementById('issue-modal');
+        const detailModal = document.getElementById('detail-modal');
+        const cancelIssueBtn = document.getElementById('cancel-issue');
+        const closeDetailModalBtn = document.getElementById('close-detail-modal');
+        const searchInputs = {
+            inventory: document.getElementById('inventory-search'),
+            receiving: document.getElementById('receiving-search'),
+            issuing: document.getElementById('issuing-search'),
+        };
+
+        // --- 초성 검색 유틸리티 ---
+        const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+        const isKorean = (char) => char.match(/[ㄱ-ㅎ가-힣]/);
+        const getChosung = (char) => {
+            if (!isKorean(char)) return char;
+            const code = char.charCodeAt(0) - 44032;
+            if (code < 0) return char;
+            return CHO[Math.floor(code / 588)];
+        };
+        const chosungMatch = (str, search) => {
+            if (!search) return true;
+            str = String(str).toLowerCase();
+            search = search.toLowerCase();
+            if (!isKorean(search.charAt(0))) return str.includes(search);
+            let searchChosung = "";
+            for (let i = 0; i < search.length; i++) searchChosung += getChosung(search[i]);
+            let strChosung = "";
+            for (let i = 0; i < str.length; i++) strChosung += getChosung(str[i]);
+            return strChosung.includes(searchChosung);
+        };
+        
+        // --- Notification Utility ---
+        function showNotification(message, isError = false) {
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white z-2000 ${isError ? 'bg-red-500' : 'bg-blue-500'}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function initializeCollections() {
+            if (!userId || !isDbReady) return;
+            const userPath = `artifacts/${appId}/users/${userId}`;
+            receivingCollection = collection(db, `${userPath}/receiving`);
+            issuingCollection = collection(db, `${userPath}/issuing`);
+        }
+
+        // --- Data Processing ---
+        function processAndRenderAll() {
+            renderInventory();
+            renderReceivingList();
+            renderIssuingList();
+        }
+
+        function getFilteredAndSortedData(data, searchInput, sortKey, fieldsToSearch) {
+            const searchTerm = searchInput.value;
+            const filtered = data.filter(item => {
+                if (!searchTerm) return true;
+                return fieldsToSearch.some(field => chosungMatch(item[field], searchTerm));
+            });
+            if (sortState[sortKey] && sortState[sortKey].key) {
+                const { key, direction } = sortState[sortKey];
+                filtered.sort((a, b) => {
+                    let valA = a[key], valB = b[key];
+                    if (typeof valA === 'string') valA = valA.toLowerCase();
+                    if (typeof valB === 'string') valB = valB.toLowerCase();
+                    if (valA < valB) return direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return direction === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+            return filtered;
+        }
+
+        // --- Data Loading and Rendering ---
+        function loadAndRenderData() {
+            if (!userId || !isDbReady) return;
+            onSnapshot(receivingCollection, (receivingSnapshot) => {
+                globalReceivingData = receivingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                onSnapshot(issuingCollection, (issuingSnapshot) => {
+                    globalIssuingData = issuingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    processAndRenderAll();
+                });
+            });
+        }
+
+        function renderInventory() {
+            const inventory = {};
+            globalReceivingData.forEach(item => { const key = `${item.materialName}_${item.materialCode}`; if (!inventory[key]) { inventory[key] = { name: item.materialName, code: item.materialCode, totalReceived: 0, totalIssued: 0 }; } inventory[key].totalReceived += Number(item.quantity); });
+            globalIssuingData.forEach(item => { const key = `${item.materialName}_${item.materialCode}`; if (inventory[key]) inventory[key].totalIssued += Number(item.quantity); });
+            let inventoryData = Object.values(inventory).map(item => ({ ...item, currentStock: item.totalReceived - item.totalIssued }));
+            const processedData = getFilteredAndSortedData(inventoryData, searchInputs.inventory, 'inventory', ['name', 'code']);
+            inventoryList.innerHTML = '';
+            processedData.forEach(item => { const row = inventoryList.insertRow(); row.className = 'border-b hover:bg-gray-50'; row.dataset.name = item.name; row.dataset.code = item.code; row.innerHTML = `<td class="table-cell font-medium">${item.name}</td><td class="table-cell">${item.code}</td><td class="table-cell text-blue-600">${item.totalReceived}</td><td class="table-cell text-orange-600">${item.totalIssued}</td><td class="table-cell font-bold ${item.currentStock > 0 ? 'text-gray-800' : 'text-red-600'}">${item.currentStock}</td>`; });
+        }
+
+        function renderReceivingList() {
+            const issuedQtys = {};
+            globalIssuingData.forEach(issue => { issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + Number(issue.quantity); });
+            let receivingData = globalReceivingData.map(item => { const remainingStock = Number(item.quantity) - (issuedQtys[item.id] || 0); const expiryDate = new Date(item.expiryDate); const today = new Date(); today.setHours(0,0,0,0); const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)); return { ...item, remainingStock, remainingDays }; });
+            const processedData = getFilteredAndSortedData(receivingData, searchInputs.receiving, 'receiving', ['date', 'materialName', 'materialCode', 'testNo', 'supplier']);
+            receivingList.innerHTML = '';
+            processedData.forEach(item => { const row = receivingList.insertRow(); row.className = 'border-b hover:bg-gray-50'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td><td class="table-cell">${item.quantity}</td><td class="table-cell font-bold ${item.remainingStock > 0 ? 'text-green-600' : 'text-red-600'}">${item.remainingStock}</td><td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell ${item.remainingDays < 30 ? 'text-red-500 font-bold' : ''}">${item.remainingDays >= 0 ? `${item.remainingDays}일` : '만료'}</td><td class="table-cell">${item.remarks}</td><td class="table-cell no-print-col"><button data-id="${item.id}" data-name="${item.materialName}" data-code="${item.materialCode}" data-stock="${item.remainingStock}" class="issue-btn bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 disabled:bg-gray-400" ${!isDbReady || item.remainingStock <= 0 ? 'disabled' : ''}>출고</button></td>`; });
+            document.querySelectorAll('.issue-btn').forEach(button => button.addEventListener('click', openIssueModal));
+        }
+
+        function renderIssuingList() {
+            const processedData = getFilteredAndSortedData(globalIssuingData, searchInputs.issuing, 'issuing', ['date', 'materialName', 'materialCode', 'testNo', 'productName']);
+            issuingList.innerHTML = '';
+            processedData.forEach(item => { const row = issuingList.insertRow(); row.className = 'border-b hover:bg-gray-50'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td><td class="table-cell">${item.quantity}</td><td class="table-cell">${item.productName}</td><td class="table-cell">${item.mfgNo}</td><td class="table-cell">${item.remarks}</td>`; });
+        }
+
+        // --- Event Handlers ---
+        document.addEventListener('DOMContentLoaded', () => {
+             setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            printBtn.addEventListener('click', () => window.print());
+            saveBtn.addEventListener('click', () => passwordModal.classList.remove('hidden'));
+            cancelPasswordBtn.addEventListener('click', closePasswordModal);
+            passwordForm.addEventListener('submit', handlePasswordSubmit);
+            receivingForm.addEventListener('submit', handleReceivingSubmit);
+            issuingForm.addEventListener('submit', handleIssuingSubmit);
+            inventoryList.addEventListener('click', (e) => handleDetailClick(e));
+            Object.values(searchInputs).forEach(input => input.addEventListener('input', processAndRenderAll));
+            document.querySelectorAll('.sortable').forEach(header => header.addEventListener('click', handleSortClick));
+            cancelIssueBtn.addEventListener('click', closeIssueModal);
+            closeDetailModalBtn.addEventListener('click', closeDetailModal);
+            document.querySelectorAll('#app button[id^="tab-"]').forEach(tab => tab.addEventListener('click', handleTabClick));
+        }
+
+        function handlePasswordSubmit(e) {
+            e.preventDefault();
+            if (!isDbReady) {
+                showNotification('데이터가 없어 저장할 수 없습니다.', true);
+                return;
+            }
+            if (passwordInput.value === '0000') {
+                generateAndDownloadExcel();
+                closePasswordModal();
+            } else {
+                passwordError.classList.remove('hidden');
+            }
+        }
+
+        function handleSortClick(e) {
+            const header = e.currentTarget;
+            const sortKey = header.closest('div[id$="-content"]').id.replace('-content', '');
+            const key = header.dataset.sort;
+            document.querySelectorAll(`#${sortKey}-content .sortable`).forEach(h => { if (h !== header) h.className = 'table-cell sortable'; });
+            if (sortState[sortKey]?.key === key && sortState[sortKey]?.direction === 'asc') { sortState[sortKey].direction = 'desc'; header.className = 'table-cell sortable desc'; } else { sortState[sortKey] = { key, direction: 'asc' }; header.className = 'table-cell sortable asc'; }
+            processAndRenderAll();
+        }
+
+        function handleTabClick(e) {
+            const tabId = e.target.id;
+            const contentId = tabId.replace('tab-', '') + '-content';
+            document.querySelectorAll('#app button[id^="tab-"]').forEach(t => { t.classList.remove('text-blue-600', 'border-blue-600', 'bg-white'); t.classList.add('text-gray-500'); });
+            e.target.classList.add('text-blue-600', 'border-blue-600', 'bg-white');
+            e.target.classList.remove('text-gray-500');
+            document.querySelectorAll('#content-area > div').forEach(c => c.classList.add('hidden'));
+            document.getElementById(contentId).classList.remove('hidden');
+        }
+
+        async function handleReceivingSubmit(e) {
+            e.preventDefault();
+            if (!isDbReady || !userId) {
+                showNotification('데이터베이스에 연결되지 않아 저장할 수 없습니다.', true);
+                return;
+            }
+            const newReceiving = { date: document.getElementById('receive-date').value, materialName: document.getElementById('receive-material-name').value, materialCode: document.getElementById('receive-material-code').value, testNo: document.getElementById('receive-test-no').value, quantity: Number(document.getElementById('receive-quantity').value), supplier: document.getElementById('receive-supplier').value, expiryDate: document.getElementById('receive-expiry-date').value, remarks: document.getElementById('receive-remarks').value, createdAt: new Date(), };
+            try {
+                await addDoc(receivingCollection, newReceiving);
+                receivingForm.reset();
+                showNotification('입고 정보가 성공적으로 저장되었습니다.');
+            } catch (error) { console.error("Error adding document: ", error); showNotification('저장에 실패했습니다.', true); }
+        }
+
+        async function handleIssuingSubmit(e) {
+            e.preventDefault();
+            if (!isDbReady || !userId) {
+                showNotification('데이터베이스에 연결되지 않아 저장할 수 없습니다.', true);
+                return;
+            }
+            const receivingId = document.getElementById('issue-receiving-id').value;
+            const issueQuantity = Number(document.getElementById('issue-quantity').value);
+            const batchStock = Number(document.getElementById('issue-modal-batch-stock').textContent);
+            if (issueQuantity > batchStock) {
+                showNotification('출고량이 해당 배치의 재고보다 많을 수 없습니다.', true);
+                return;
+            }
+            const receivingDocRef = doc(db, `artifacts/${appId}/users/${userId}/receiving`, receivingId);
+            const receivingDocSnap = await getDoc(receivingDocRef);
+            if (!receivingDocSnap.exists()) {
+                showNotification('출고할 입고 정보를 찾을 수 없습니다.', true);
+                return;
+            }
+            const receivingData = receivingDocSnap.data();
+            const newIssuing = { date: document.getElementById('issue-date').value, quantity: issueQuantity, testNo: document.getElementById('issue-test-no').value, productName: document.getElementById('issue-product-name').value, mfgNo: document.getElementById('issue-mfg-no').value, remarks: document.getElementById('issue-remarks').value, receivingId: receivingId, materialName: receivingData.materialName, materialCode: receivingData.materialCode, createdAt: new Date(), };
+            try {
+                await addDoc(issuingCollection, newIssuing);
+                closeIssueModal();
+                showNotification('출고 처리되었습니다.');
+            } catch (error) { console.error("Error adding document: ", error); showNotification('출고 처리에 실패했습니다.', true); }
+        }
+        
+        function handleDetailClick(e) {
+            const row = e.target.closest('tr');
+            if (!row || !row.dataset.name) return;
+            openDetailModal(row.dataset.name, row.dataset.code);
+        }
+
+        // --- Modal Control ---
+        function closePasswordModal() { passwordModal.classList.add('hidden'); passwordInput.value = ''; passwordError.classList.add('hidden'); }
+        function openIssueModal(e) { e.stopPropagation(); const button = e.target; document.getElementById('issue-receiving-id').value = button.dataset.id; document.getElementById('issue-modal-material-name').textContent = button.dataset.name; document.getElementById('issue-modal-material-code').textContent = button.dataset.code; document.getElementById('issue-modal-batch-stock').textContent = button.dataset.stock; document.getElementById('issue-quantity').max = button.dataset.stock; document.getElementById('issue-date').valueAsDate = new Date(); issueModal.classList.remove('hidden'); }
+        function closeIssueModal() { issuingForm.reset(); issueModal.classList.add('hidden'); }
+        function openDetailModal(materialName, materialCode) { document.getElementById('detail-modal-title').textContent = `[${materialName} (${materialCode})] 상세 내역`; const filteredReceiving = globalReceivingData.filter(item => item.materialName === materialName && item.materialCode === materialCode).sort((a,b) => b.date.localeCompare(a.date)); const filteredIssuing = globalIssuingData.filter(item => item.materialName === materialName && item.materialCode === materialCode).sort((a,b) => b.date.localeCompare(a.date)); const detailReceivingList = document.getElementById('detail-receiving-list'); detailReceivingList.innerHTML = ''; filteredReceiving.forEach(item => { const row = detailReceivingList.insertRow(); row.className = 'border-b'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell">${item.testNo}</td><td class="table-cell">${item.quantity}</td><td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell">${item.remarks}</td>`; }); const detailIssuingList = document.getElementById('detail-issuing-list'); detailIssuingList.innerHTML = ''; filteredIssuing.forEach(item => { const row = detailIssuingList.insertRow(); row.className = 'border-b'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell">${item.testNo}</td><td class="table-cell">${item.quantity}</td><td class="table-cell">${item.productName}</td><td class="table-cell">${item.mfgNo}</td><td class="table-cell">${item.remarks}</td>`; }); detailModal.classList.remove('hidden'); }
+        function closeDetailModal() { detailModal.classList.add('hidden'); }
+
+        // --- Excel Export Function ---
+        function generateAndDownloadExcel() {
+            const inventory = {};
+            globalReceivingData.forEach(item => { const key = `${item.materialName}_${item.materialCode}`; if (!inventory[key]) { inventory[key] = { name: item.materialName, code: item.materialCode, totalReceived: 0, totalIssued: 0 }; } inventory[key].totalReceived += Number(item.quantity); });
+            globalIssuingData.forEach(item => { const key = `${item.materialName}_${item.materialCode}`; if (inventory[key]) inventory[key].totalIssued += Number(item.quantity); });
+            const inventoryData = Object.values(inventory).map(item => ({ '원료명': item.name, '원료 코드': item.code, '총 입고량': item.totalReceived, '총 출고량': item.totalIssued, '현재고': item.totalReceived - item.totalIssued }));
+            const issuedQtys = {};
+            globalIssuingData.forEach(issue => { issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + Number(issue.quantity); });
+            const receivingData = globalReceivingData.map(item => { const remainingStock = Number(item.quantity) - (issuedQtys[item.id] || 0); const expiryDate = new Date(item.expiryDate); const today = new Date(); today.setHours(0, 0, 0, 0); const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)); return { '입고일': item.date, '원료명': item.materialName, '원료 코드': item.materialCode, '시험의뢰번호': item.testNo, '입고량': item.quantity, '남은 재고': remainingStock, '업체명': item.supplier, '유통기한': item.expiryDate, '잔여일': remainingDays >= 0 ? `${remainingDays}일` : '만료', '비고': item.remarks }; });
+            const issuingData = globalIssuingData.map(item => ({ '출고일': item.date, '원료명': item.materialName, '원료 코드': item.materialCode, '시험번호': item.testNo, '출고량': item.quantity, '제품명': item.productName, '제조번호': item.mfgNo, '비고': item.remarks }));
+            const wb = XLSX.utils.book_new();
+            const ws1 = XLSX.utils.json_to_sheet(inventoryData);
+            const ws2 = XLSX.utils.json_to_sheet(receivingData);
+            const ws3 = XLSX.utils.json_to_sheet(issuingData);
+            XLSX.utils.book_append_sheet(wb, ws1, "실시간 재고 현황");
+            XLSX.utils.book_append_sheet(wb, ws2, "입고 내역");
+            XLSX.utils.book_append_sheet(wb, ws3, "출고 내역");
+            const todayStr = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `원료수불대장_${todayStr}.xlsx`);
+        }
+    </script>
+</body>
+</html>
