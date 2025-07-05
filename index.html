@@ -43,6 +43,13 @@
         #inventory-list tr, #receiving-list tr, #issuing-list tr {
             cursor: pointer;
         }
+        .remarks-cell {
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px; /* Adjust as needed */
+        }
         .sortable {
             cursor: pointer;
             position: relative;
@@ -50,6 +57,11 @@
         .sortable::after { content: '↕'; position: absolute; right: 10px; color: #9ca3af; opacity: 0.5; }
         .sortable.asc::after { content: '↑'; opacity: 1; }
         .sortable.desc::after { content: '↓'; opacity: 1; }
+        .converted-value {
+            color: #3b82f6; /* blue-500 */
+            font-weight: 600;
+            cursor: pointer;
+        }
 
         /* 인쇄용 스타일 */
         @media print {
@@ -91,6 +103,7 @@
             <h1 class="text-3xl md:text-4xl font-bold text-gray-900">원료 수불 관리 프로그램</h1>
             <p class="text-gray-600 mt-2">원료의 입고, 출고 및 재고를 실시간으로 관리합니다.</p>
             <div class="mt-6 flex justify-center gap-4">
+                <button id="manage-units-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">단위 관리</button>
                 <button id="print-btn" class="bg-gray-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-colors">인쇄</button>
                 <button id="save-btn" class="bg-teal-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-teal-700 transition-colors">엑셀로 저장</button>
             </div>
@@ -99,16 +112,17 @@
         <!-- 입고 관리 -->
         <div class="bg-white p-6 rounded-lg shadow-lg mb-8 no-print">
             <h2 class="text-2xl font-bold mb-4 border-b pb-2">원료 입고 등록</h2>
-            <form id="receiving-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <input type="date" id="receive-date" class="p-2 border rounded" required>
-                <input type="text" id="receive-material-name" placeholder="원료명" class="p-2 border rounded" required>
-                <input type="text" id="receive-material-code" placeholder="원료 코드" class="p-2 border rounded" required>
-                <input type="text" id="receive-test-no" placeholder="시험의뢰번호" class="p-2 border rounded" required>
-                <input type="number" id="receive-quantity" placeholder="입고량" min="0" class="p-2 border rounded" required>
-                <input type="text" id="receive-supplier" placeholder="업체명" class="p-2 border rounded">
-                <input type="date" id="receive-expiry-date" class="p-2 border rounded" required>
-                <input type="text" id="receive-remarks" placeholder="비고" class="p-2 border rounded md:col-span-2 lg:col-span-1">
-                <button type="submit" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition duration-300 md:col-span-2 lg:col-span-3">입고 등록</button>
+            <form id="receiving-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                <div class="flex flex-col"><label for="receive-date" class="text-sm font-medium text-gray-700 mb-1">입고일</label><input type="date" id="receive-date" class="p-2 border rounded" required></div>
+                <div class="flex flex-col"><label for="receive-material-name" class="text-sm font-medium text-gray-700 mb-1">원료명</label><input type="text" id="receive-material-name" placeholder="원료명" class="p-2 border rounded" required></div>
+                <div class="flex flex-col"><label for="receive-material-code" class="text-sm font-medium text-gray-700 mb-1">원료 코드</label><input type="text" id="receive-material-code" placeholder="원료 코드" class="p-2 border rounded" required></div>
+                <div class="flex flex-col"><label for="receive-test-no" class="text-sm font-medium text-gray-700 mb-1">시험번호</label><input type="text" id="receive-test-no" placeholder="시험번호" class="p-2 border rounded" required></div>
+                <div class="flex flex-col"><label for="receive-quantity" class="text-sm font-medium text-gray-700 mb-1">입고량</label><input type="text" id="receive-quantity" placeholder="입고량" class="p-2 border rounded" required></div>
+                <div class="flex flex-col"><label for="receive-unit" class="text-sm font-medium text-gray-700 mb-1">단위 / 비중</label><div class="flex gap-2"><select id="receive-unit" class="p-2 border rounded w-1/2" required></select><input type="number" id="receive-specific-gravity" placeholder="비중" step="0.01" class="p-2 border rounded w-1/2 hidden"></div></div>
+                <div class="flex flex-col"><label for="receive-supplier" class="text-sm font-medium text-gray-700 mb-1">업체명</label><input type="text" id="receive-supplier" placeholder="업체명" class="p-2 border rounded"></div>
+                <div class="flex flex-col"><label for="receive-expiry-date" class="text-sm font-medium text-gray-700 mb-1">유통기한</label><input type="date" id="receive-expiry-date" class="p-2 border rounded" required></div>
+                <div class="flex flex-col lg:col-span-2"><label for="receive-remarks" class="text-sm font-medium text-gray-700 mb-1">비고</label><textarea id="receive-remarks" placeholder="비고" class="p-2 border rounded" rows="3"></textarea></div>
+                <div class="lg:col-span-4"><button type="submit" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition duration-300 w-full">입고 등록</button></div>
             </form>
         </div>
 
@@ -135,9 +149,8 @@
                             <tr>
                                 <th class="table-cell sortable" data-sort="name">원료명</th>
                                 <th class="table-cell sortable" data-sort="code">원료 코드</th>
-                                <th class="table-cell sortable" data-sort="totalReceived">총 입고량</th>
-                                <th class="table-cell sortable" data-sort="totalIssued">총 출고량</th>
-                                <th class="table-cell sortable" data-sort="currentStock">현재고</th>
+                                <th class="table-cell">현재고</th>
+                                <th class="table-cell">환산 재고 (KG)</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-list"></tbody>
@@ -158,7 +171,7 @@
                                 <th class="table-cell sortable" data-sort="date">입고일</th>
                                 <th class="table-cell sortable" data-sort="materialName">원료명</th>
                                 <th class="table-cell sortable" data-sort="materialCode">원료 코드</th>
-                                <th class="table-cell">시험의뢰번호</th>
+                                <th class="table-cell">시험번호</th>
                                 <th class="table-cell sortable" data-sort="quantity">입고량</th>
                                 <th class="table-cell sortable" data-sort="remainingStock">남은 재고</th>
                                 <th class="table-cell sortable" data-sort="supplier">업체명</th>
@@ -211,11 +224,14 @@
                 <div class="mb-4"><label class="block mb-1">해당 배치 재고</label><p id="issue-modal-batch-stock" class="font-semibold"></p></div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="date" id="issue-date" class="p-2 border rounded" required>
-                    <input type="number" id="issue-quantity" placeholder="출고량" min="1" class="p-2 border rounded" required>
+                    <div class="flex gap-2">
+                        <input type="text" id="issue-quantity" placeholder="출고량" class="p-2 border rounded w-2/3" required>
+                        <select id="issue-unit" class="p-2 border rounded w-1/3" required></select>
+                    </div>
                     <input type="text" id="issue-test-no" placeholder="시험번호" class="p-2 border rounded" required>
                     <input type="text" id="issue-product-name" placeholder="제품명" class="p-2 border rounded">
                     <input type="text" id="issue-mfg-no" placeholder="제조번호" class="p-2 border rounded">
-                    <input type="text" id="issue-remarks" placeholder="비고" class="p-2 border rounded md:col-span-2">
+                    <textarea id="issue-remarks" placeholder="비고" class="p-2 border rounded md:col-span-2" rows="3"></textarea>
                 </div>
                 <div class="mt-6 flex justify-end gap-4">
                     <button type="button" id="cancel-issue" class="bg-gray-300 text-gray-800 p-2 rounded hover:bg-gray-400">취소</button>
@@ -234,7 +250,7 @@
             </div>
             <div class="mb-8">
                 <h4 class="text-lg font-semibold mb-2 border-b pb-1">입고 내역</h4>
-                <div class="overflow-x-auto max-h-60"><table class="w-full text-left border-collapse"><thead class="bg-gray-200 sticky top-0"><tr><th class="table-cell">입고일</th><th class="table-cell">시험의뢰번호</th><th class="table-cell">입고량</th><th class="table-cell">업체명</th><th class="table-cell">유통기한</th><th class="table-cell">비고</th></tr></thead><tbody id="detail-receiving-list"></tbody></table></div>
+                <div class="overflow-x-auto max-h-60"><table class="w-full text-left border-collapse"><thead class="bg-gray-200 sticky top-0"><tr><th class="table-cell">입고일</th><th class="table-cell">시험번호</th><th class="table-cell">입고량</th><th class="table-cell">업체명</th><th class="table-cell">유통기한</th><th class="table-cell">비고</th></tr></thead><tbody id="detail-receiving-list"></tbody></table></div>
             </div>
             <div>
                 <h4 class="text-lg font-semibold mb-2 border-b pb-1">출고 내역</h4>
@@ -259,29 +275,72 @@
         </div>
     </div>
 
+    <!-- 비고 전체 보기 모달 -->
+    <div id="remarks-modal" class="modal-backdrop hidden no-print">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">비고 전체 내용</h3>
+                <button id="close-remarks-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <p id="remarks-modal-content" class="text-gray-700 whitespace-pre-wrap bg-gray-100 p-4 rounded"></p>
+        </div>
+    </div>
+
+    <!-- 단위 관리 모달 -->
+    <div id="unit-management-modal" class="modal-backdrop hidden no-print">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">단위 관리</h3>
+                <button id="close-unit-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <form id="unit-form" class="flex gap-2 mb-4">
+                <input type="hidden" id="unit-id">
+                <input type="text" id="unit-name" placeholder="단위명 (예: kg, L)" class="p-2 border rounded flex-grow" required>
+                <button type="submit" id="submit-unit-btn" class="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">추가</button>
+                <button type="button" id="cancel-edit-unit-btn" class="bg-gray-500 text-white px-4 rounded hover:bg-gray-600 hidden">취소</button>
+            </form>
+            <div>
+                <h4 class="text-lg font-semibold mb-2">등록된 단위 목록</h4>
+                <ul id="unit-list-management" class="space-y-2 max-h-60 overflow-y-auto">
+                    <!-- Unit items will be populated here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         // Firebase SDK imports and config
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        
+        const firebaseConfig = {
+            // apiKey: "AIza...",
+            // authDomain: "your-project-id.firebaseapp.com",
+            // projectId: "your-project-id",
+            // storageBucket: "your-project-id.appspot.com",
+            // messagingSenderId: "...",
+            // appId: "1:..."
+        };
 
-        // --- Global State ---
+        // --- 아래 코드는 수정할 필요 없습니다. ---
         let app, db, auth, userId, appId;
-        let receivingCollection, issuingCollection;
-        let globalReceivingData = [];
-        let globalIssuingData = [];
+        let receivingCollection, issuingCollection, unitsCollection;
+        let globalReceivingData = [], globalIssuingData = [], globalUnitsData = [];
         let sortState = {};
         let isDbReady = false;
 
-        // --- Firebase Initialization & Auth ---
         try {
-            const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-            if (firebaseConfigStr === '{}') {
-                throw new Error("Firebase config is not available.");
+            const configToUse = typeof __firebase_config !== 'undefined' && __firebase_config !== '{}'
+                ? JSON.parse(__firebase_config)
+                : firebaseConfig;
+
+            if (!configToUse.apiKey) {
+                 throw new Error("Firebase config is not provided. Please add your config object in the code.");
             }
-            const firebaseConfig = JSON.parse(firebaseConfigStr);
-            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            app = initializeApp(firebaseConfig);
+            
+            appId = typeof __app_id !== 'undefined' ? __app_id : configToUse.projectId || 'default-app-id';
+            app = initializeApp(configToUse);
             db = getFirestore(app);
             auth = getAuth(app);
             isDbReady = true;
@@ -292,7 +351,10 @@
                     initializeCollections();
                     loadAndRenderData();
                 } else {
-                    signInAnonymously(auth).catch(error => console.error("Anonymous sign-in failed:", error));
+                    signInAnonymously(auth).catch(error => {
+                        console.error("Anonymous sign-in failed:", error);
+                        isDbReady = false;
+                    });
                 }
             });
 
@@ -302,13 +364,28 @@
                 const errorBanner = document.createElement('div');
                 errorBanner.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 no-print';
                 errorBanner.setAttribute('role', 'alert');
-                errorBanner.innerHTML = `<p class="font-bold">데이터베이스 연결 실패</p><p>Firebase 초기화 설정이 없어 데이터를 저장하거나 불러올 수 없습니다. 프로그램은 UI 데모 모드로 실행됩니다.</p>`;
+                errorBanner.innerHTML = `<p class="font-bold">데이터베이스 연결 실패</p><p>Firebase 설정이 올바르지 않습니다. 코드 상단의 firebaseConfig 부분을 확인하고 자신의 설정으로 교체해주세요.</p>`;
                 const appDiv = document.getElementById('app');
                 if (appDiv) appDiv.prepend(errorBanner);
             });
         }
         
         // --- UI Elements ---
+        const manageUnitsBtn = document.getElementById('manage-units-btn');
+        const unitManagementModal = document.getElementById('unit-management-modal');
+        const closeUnitModalBtn = document.getElementById('close-unit-modal');
+        const unitForm = document.getElementById('unit-form');
+        const unitIdInput = document.getElementById('unit-id');
+        const unitNameInput = document.getElementById('unit-name');
+        const submitUnitBtn = document.getElementById('submit-unit-btn');
+        const cancelEditUnitBtn = document.getElementById('cancel-edit-unit-btn');
+        const unitListManagement = document.getElementById('unit-list-management');
+        const receiveUnitSelect = document.getElementById('receive-unit');
+        const issueUnitSelect = document.getElementById('issue-unit');
+        const receiveQuantityInput = document.getElementById('receive-quantity');
+        const issueQuantityInput = document.getElementById('issue-quantity');
+        const receiveSpecificGravityInput = document.getElementById('receive-specific-gravity');
+        // Other elements...
         const printBtn = document.getElementById('print-btn');
         const saveBtn = document.getElementById('save-btn');
         const passwordModal = document.getElementById('password-modal');
@@ -325,11 +402,37 @@
         const detailModal = document.getElementById('detail-modal');
         const cancelIssueBtn = document.getElementById('cancel-issue');
         const closeDetailModalBtn = document.getElementById('close-detail-modal');
+        const remarksModal = document.getElementById('remarks-modal');
+        const closeRemarksModalBtn = document.getElementById('close-remarks-modal');
+        const remarksModalContent = document.getElementById('remarks-modal-content');
         const searchInputs = {
             inventory: document.getElementById('inventory-search'),
             receiving: document.getElementById('receiving-search'),
             issuing: document.getElementById('issuing-search'),
         };
+
+        // --- Formatting Utility ---
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '';
+            return Number(num).toLocaleString('en-US');
+        }
+
+        function formatNumberInput(e) {
+            const input = e.target;
+            let value = input.value;
+            const originalValue = value.replace(/,/g, '');
+            
+            if (isNaN(originalValue) || originalValue.trim() === '') {
+                input.value = '';
+            } else {
+                const formattedValue = formatNumber(originalValue);
+                input.value = formattedValue;
+            }
+        }
+
+        function parseFormattedNumber(value) {
+            return Number(String(value).replace(/,/g, ''));
+        }
 
         // --- 초성 검색 유틸리티 ---
         const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
@@ -368,6 +471,7 @@
             const userPath = `artifacts/${appId}/users/${userId}`;
             receivingCollection = collection(db, `${userPath}/receiving`);
             issuingCollection = collection(db, `${userPath}/issuing`);
+            unitsCollection = collection(db, `${userPath}/units`);
         }
 
         // --- Data Processing ---
@@ -400,6 +504,15 @@
         // --- Data Loading and Rendering ---
         function loadAndRenderData() {
             if (!userId || !isDbReady) return;
+            
+            // Load Units first
+            onSnapshot(unitsCollection, (unitSnapshot) => {
+                globalUnitsData = unitSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderUnitManagementList();
+                populateUnitDropdowns();
+            });
+
+            // Load main data
             onSnapshot(receivingCollection, (receivingSnapshot) => {
                 globalReceivingData = receivingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 onSnapshot(issuingCollection, (issuingSnapshot) => {
@@ -411,28 +524,183 @@
 
         function renderInventory() {
             const inventory = {};
-            globalReceivingData.forEach(item => { const key = `${item.materialName}_${item.materialCode}`; if (!inventory[key]) { inventory[key] = { name: item.materialName, code: item.materialCode, totalReceived: 0, totalIssued: 0 }; } inventory[key].totalReceived += Number(item.quantity); });
-            globalIssuingData.forEach(item => { const key = `${item.materialName}_${item.materialCode}`; if (inventory[key]) inventory[key].totalIssued += Number(item.quantity); });
-            let inventoryData = Object.values(inventory).map(item => ({ ...item, currentStock: item.totalReceived - item.totalIssued }));
+
+            globalReceivingData.forEach(item => {
+                const key = `${item.materialName}_${item.materialCode}`;
+                if (!inventory[key]) {
+                    inventory[key] = { name: item.materialName, code: item.materialCode, stock: {} };
+                }
+                const unit = item.unit || 'N/A';
+                if (!inventory[key].stock[unit]) {
+                    inventory[key].stock[unit] = { received: 0, issued: 0 };
+                }
+                inventory[key].stock[unit].received += parseFormattedNumber(item.quantity);
+            });
+
+            globalIssuingData.forEach(item => {
+                const key = `${item.materialName}_${item.materialCode}`;
+                if (inventory[key]) {
+                    const unit = item.unit || 'N/A';
+                    if (!inventory[key].stock[unit]) {
+                        inventory[key].stock[unit] = { received: 0, issued: 0 };
+                    }
+                    inventory[key].stock[unit].issued += parseFormattedNumber(item.quantity);
+                }
+            });
+
+            let inventoryData = Object.values(inventory).map(item => {
+                const stockStrings = Object.entries(item.stock)
+                    .map(([unit, values]) => {
+                        const current = values.received - values.issued;
+                        return `${formatNumber(current)} ${unit}`;
+                    })
+                    .join(', ');
+
+                const materialReceivingBatches = globalReceivingData.filter(
+                    r => r.materialName === item.name && r.materialCode === item.code
+                );
+
+                let totalConvertedKg = 0;
+                materialReceivingBatches.forEach(batch => {
+                    const issuedQtyForThisBatch = globalIssuingData
+                        .filter(issue => issue.receivingId === batch.id)
+                        .reduce((sum, issue) => sum + parseFormattedNumber(issue.quantity), 0);
+                    
+                    const remainingQty = parseFormattedNumber(batch.quantity) - issuedQtyForThisBatch;
+                    const sg = batch.specificGravity || 1;
+                    const unit = (batch.unit || '').toLowerCase();
+                    let convertedQty = 0;
+
+                    if (unit === 'kg') { convertedQty = remainingQty; } 
+                    else if (unit === 'g') { convertedQty = remainingQty / 1000; } 
+                    else if (unit === 'l') { convertedQty = remainingQty * sg; } 
+                    else if (unit === 'ml') { convertedQty = (remainingQty * sg) / 1000; }
+                    
+                    totalConvertedKg += convertedQty;
+                });
+
+                return { ...item, currentStockStr: stockStrings, totalConvertedKg: totalConvertedKg };
+            });
+
             const processedData = getFilteredAndSortedData(inventoryData, searchInputs.inventory, 'inventory', ['name', 'code']);
+            
             inventoryList.innerHTML = '';
-            processedData.forEach(item => { const row = inventoryList.insertRow(); row.className = 'border-b hover:bg-gray-50'; row.dataset.name = item.name; row.dataset.code = item.code; row.innerHTML = `<td class="table-cell font-medium">${item.name}</td><td class="table-cell">${item.code}</td><td class="table-cell text-blue-600">${item.totalReceived}</td><td class="table-cell text-orange-600">${item.totalIssued}</td><td class="table-cell font-bold ${item.currentStock > 0 ? 'text-gray-800' : 'text-red-600'}">${item.currentStock}</td>`; });
+            processedData.forEach(item => {
+                const row = inventoryList.insertRow();
+                row.className = 'border-b hover:bg-gray-50';
+                row.dataset.name = item.name;
+                row.dataset.code = item.code;
+                row.innerHTML = `
+                    <td class="table-cell font-medium">${item.name}</td>
+                    <td class="table-cell">${item.code}</td>
+                    <td class="table-cell font-bold">${item.currentStockStr || '0'}</td>
+                    <td class="table-cell text-purple-600 font-semibold">${formatNumber(item.totalConvertedKg.toFixed(2))} KG</td>
+                `;
+            });
         }
+
 
         function renderReceivingList() {
             const issuedQtys = {};
-            globalIssuingData.forEach(issue => { issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + Number(issue.quantity); });
-            let receivingData = globalReceivingData.map(item => { const remainingStock = Number(item.quantity) - (issuedQtys[item.id] || 0); const expiryDate = new Date(item.expiryDate); const today = new Date(); today.setHours(0,0,0,0); const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)); return { ...item, remainingStock, remainingDays }; });
+            globalIssuingData.forEach(issue => {
+                issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + parseFormattedNumber(issue.quantity);
+            });
+            let receivingData = globalReceivingData.map(item => { const remainingStock = parseFormattedNumber(item.quantity) - (issuedQtys[item.id] || 0); const expiryDate = new Date(item.expiryDate); const today = new Date(); today.setHours(0,0,0,0); const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)); return { ...item, remainingStock, remainingDays }; });
             const processedData = getFilteredAndSortedData(receivingData, searchInputs.receiving, 'receiving', ['date', 'materialName', 'materialCode', 'testNo', 'supplier']);
             receivingList.innerHTML = '';
-            processedData.forEach(item => { const row = receivingList.insertRow(); row.className = 'border-b hover:bg-gray-50'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td><td class="table-cell">${item.quantity}</td><td class="table-cell font-bold ${item.remainingStock > 0 ? 'text-green-600' : 'text-red-600'}">${item.remainingStock}</td><td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell ${item.remainingDays < 30 ? 'text-red-500 font-bold' : ''}">${item.remainingDays >= 0 ? `${item.remainingDays}일` : '만료'}</td><td class="table-cell">${item.remarks}</td><td class="table-cell no-print-col"><button data-id="${item.id}" data-name="${item.materialName}" data-code="${item.materialCode}" data-stock="${item.remainingStock}" class="issue-btn bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 disabled:bg-gray-400" ${!isDbReady || item.remainingStock <= 0 ? 'disabled' : ''}>출고</button></td>`; });
+            processedData.forEach(item => {
+                const remarksCell = createRemarksCell(item.remarks);
+                const quantityCell = createQuantityCell(item.quantity, item.unit, item.specificGravity);
+                const remainingStockCell = createQuantityCell(item.remainingStock, item.unit, item.specificGravity);
+
+                const row = receivingList.insertRow();
+                row.className = 'border-b hover:bg-gray-50';
+                row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td>${quantityCell}${remainingStockCell}<td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell ${item.remainingDays < 30 ? 'text-red-500 font-bold' : ''}">${item.remainingDays >= 0 ? `${item.remainingDays}일` : '만료'}</td>${remarksCell}<td class="table-cell no-print-col"><button data-id="${item.id}" data-name="${item.materialName}" data-code="${item.materialCode}" data-stock="${item.remainingStock}" data-unit="${item.unit || ''}" class="issue-btn bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 disabled:bg-gray-400" ${!isDbReady || item.remainingStock <= 0 ? 'disabled' : ''}>출고</button></td>`;
+            });
             document.querySelectorAll('.issue-btn').forEach(button => button.addEventListener('click', openIssueModal));
         }
 
         function renderIssuingList() {
             const processedData = getFilteredAndSortedData(globalIssuingData, searchInputs.issuing, 'issuing', ['date', 'materialName', 'materialCode', 'testNo', 'productName']);
             issuingList.innerHTML = '';
-            processedData.forEach(item => { const row = issuingList.insertRow(); row.className = 'border-b hover:bg-gray-50'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td><td class="table-cell">${item.quantity}</td><td class="table-cell">${item.productName}</td><td class="table-cell">${item.mfgNo}</td><td class="table-cell">${item.remarks}</td>`; });
+            processedData.forEach(item => {
+                const receivingDoc = globalReceivingData.find(r => r.id === item.receivingId);
+                const sg = receivingDoc ? receivingDoc.specificGravity : 1;
+                const quantityCell = createQuantityCell(item.quantity, item.unit, sg);
+                const remarksCell = createRemarksCell(item.remarks);
+                const row = issuingList.insertRow();
+                row.className = 'border-b hover:bg-gray-50';
+                row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td>${quantityCell}<td class="table-cell">${item.productName}</td><td class="table-cell">${item.mfgNo}</td>${remarksCell}`;
+            });
+        }
+        
+        function createRemarksCell(remarks) {
+            const maxLength = 15;
+            if (remarks && remarks.length > maxLength) {
+                return `<td class="table-cell remarks-cell" title="클릭하여 전체 보기" data-full-remarks="${remarks}">${remarks.substring(0, maxLength)}...</td>`;
+            }
+            return `<td class="table-cell">${remarks || ''}</td>`;
+        }
+        
+        function createQuantityCell(originalQuantity, originalUnit, specificGravity = 1) {
+            const unitLower = (originalUnit || '').toLowerCase();
+            const isVolume = unitLower === 'l' || unitLower === 'ml';
+
+            if (isVolume) {
+                let convertedKg = 0;
+                if (unitLower === 'l') {
+                    convertedKg = originalQuantity * specificGravity;
+                } else if (unitLower === 'ml') {
+                    convertedKg = (originalQuantity * specificGravity) / 1000;
+                }
+                
+                const originalText = `${formatNumber(originalQuantity)} ${originalUnit} (비중: ${specificGravity})`;
+                const convertedText = `${formatNumber(convertedKg.toFixed(2))} KG`;
+
+                return `<td class="table-cell">
+                            <span class="converted-value" 
+                                  data-original-text="${originalText}" 
+                                  data-converted-text="${convertedText}"
+                                  title="클릭하여 단위 전환">
+                                ${convertedText}
+                            </span>
+                        </td>`;
+            } else {
+                return `<td class="table-cell">${formatNumber(originalQuantity)} ${originalUnit || ''}</td>`;
+            }
+        }
+        
+        function renderUnitManagementList() {
+            unitListManagement.innerHTML = '';
+            globalUnitsData.forEach(unit => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-2 bg-gray-100 rounded';
+                li.innerHTML = `
+                    <span>${unit.name}</span>
+                    <div class="space-x-2">
+                        <button data-id="${unit.id}" data-name="${unit.name}" class="edit-unit-btn text-blue-500 hover:text-blue-700">편집</button>
+                        <button data-id="${unit.id}" class="delete-unit-btn text-red-500 hover:text-red-700">삭제</button>
+                    </div>
+                `;
+                unitListManagement.appendChild(li);
+            });
+        }
+
+        function populateUnitDropdowns() {
+            const options = globalUnitsData.map(unit => `<option value="${unit.name}">${unit.name}</option>`).join('');
+            receiveUnitSelect.innerHTML = options;
+            issueUnitSelect.innerHTML = options;
+            // After populating, check the initial state for the specific gravity input
+            toggleSpecificGravityInput();
+        }
+        
+        function toggleSpecificGravityInput() {
+            const selectedUnit = receiveUnitSelect.value.toLowerCase();
+            if (selectedUnit === 'l' || selectedUnit === 'ml') {
+                receiveSpecificGravityInput.classList.remove('hidden');
+            } else {
+                receiveSpecificGravityInput.classList.add('hidden');
+            }
         }
 
         // --- Event Handlers ---
@@ -441,6 +709,27 @@
         });
 
         function setupEventListeners() {
+            // Number formatting
+            receiveQuantityInput.addEventListener('input', formatNumberInput);
+            issueQuantityInput.addEventListener('input', formatNumberInput);
+
+            // Unit select change
+            receiveUnitSelect.addEventListener('change', toggleSpecificGravityInput);
+
+            // New Unit Management Listeners
+            manageUnitsBtn.addEventListener('click', () => unitManagementModal.classList.remove('hidden'));
+            closeUnitModalBtn.addEventListener('click', () => unitManagementModal.classList.add('hidden'));
+            unitForm.addEventListener('submit', handleUnitFormSubmit);
+            cancelEditUnitBtn.addEventListener('click', cancelUnitEdit);
+            unitListManagement.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-unit-btn')) {
+                    handleDeleteUnit(e.target.dataset.id);
+                } else if (e.target.classList.contains('edit-unit-btn')) {
+                    handleEditUnit(e.target.dataset.id, e.target.dataset.name);
+                }
+            });
+
+            // Existing Listeners
             printBtn.addEventListener('click', () => window.print());
             saveBtn.addEventListener('click', () => passwordModal.classList.remove('hidden'));
             cancelPasswordBtn.addEventListener('click', closePasswordModal);
@@ -452,7 +741,83 @@
             document.querySelectorAll('.sortable').forEach(header => header.addEventListener('click', handleSortClick));
             cancelIssueBtn.addEventListener('click', closeIssueModal);
             closeDetailModalBtn.addEventListener('click', closeDetailModal);
+            closeRemarksModalBtn.addEventListener('click', closeRemarksModal);
             document.querySelectorAll('#app button[id^="tab-"]').forEach(tab => tab.addEventListener('click', handleTabClick));
+            document.getElementById('content-area').addEventListener('click', (e) => {
+                if (e.target.classList.contains('remarks-cell')) {
+                    const fullRemarks = e.target.dataset.fullRemarks;
+                    openRemarksModal(fullRemarks);
+                } else if (e.target.classList.contains('converted-value')) {
+                    const el = e.target;
+                    const originalText = el.dataset.originalText;
+                    const convertedText = el.dataset.convertedText;
+                    if (el.textContent.trim() === convertedText) {
+                        el.textContent = originalText;
+                    } else {
+                        el.textContent = convertedText;
+                    }
+                }
+            });
+        }
+
+        async function handleUnitFormSubmit(e) {
+            e.preventDefault();
+            if (!isDbReady || !userId) {
+                showNotification('데이터베이스에 연결되지 않아 저장할 수 없습니다.', true);
+                return;
+            }
+            const id = unitIdInput.value;
+            const name = unitNameInput.value.trim();
+            if (!name) return;
+
+            try {
+                if (id) { // Update
+                    const unitRef = doc(unitsCollection, id);
+                    await updateDoc(unitRef, { name });
+                    showNotification('단위가 수정되었습니다.');
+                } else { // Add
+                    await addDoc(unitsCollection, { name });
+                    showNotification('단위가 추가되었습니다.');
+                }
+                cancelUnitEdit();
+            } catch (error) {
+                console.error("Error saving unit:", error);
+                showNotification('단위 저장에 실패했습니다.', true);
+            }
+        }
+
+        function cancelUnitEdit() {
+            unitIdInput.value = '';
+            unitNameInput.value = '';
+            submitUnitBtn.textContent = '추가';
+            submitUnitBtn.classList.replace('bg-green-600', 'bg-blue-600');
+            cancelEditUnitBtn.classList.add('hidden');
+        }
+
+        function handleEditUnit(id, name) {
+            unitIdInput.value = id;
+            unitNameInput.value = name;
+            submitUnitBtn.textContent = '수정';
+            submitUnitBtn.classList.replace('bg-blue-600', 'bg-green-600');
+            cancelEditUnitBtn.classList.remove('hidden');
+            unitNameInput.focus();
+        }
+
+        async function handleDeleteUnit(id) {
+            if (confirm('이 단위를 삭제하시겠습니까? 이 단위를 사용한 기존 데이터에는 영향을 주지 않습니다.')) {
+                 if (!isDbReady || !userId) {
+                    showNotification('데이터베이스에 연결되지 않아 삭제할 수 없습니다.', true);
+                    return;
+                }
+                try {
+                    const unitRef = doc(unitsCollection, id);
+                    await deleteDoc(unitRef);
+                    showNotification('단위가 삭제되었습니다.');
+                } catch (error) {
+                    console.error("Error deleting unit:", error);
+                    showNotification('단위 삭제에 실패했습니다.', true);
+                }
+            }
         }
 
         function handlePasswordSubmit(e) {
@@ -481,7 +846,10 @@
         function handleTabClick(e) {
             const tabId = e.target.id;
             const contentId = tabId.replace('tab-', '') + '-content';
-            document.querySelectorAll('#app button[id^="tab-"]').forEach(t => { t.classList.remove('text-blue-600', 'border-blue-600', 'bg-white'); t.classList.add('text-gray-500'); });
+            document.querySelectorAll('#app button[id^="tab-"]').forEach(t => {
+                t.classList.remove('text-blue-600', 'border-blue-600', 'bg-white');
+                t.classList.add('text-gray-500');
+            });
             e.target.classList.add('text-blue-600', 'border-blue-600', 'bg-white');
             e.target.classList.remove('text-gray-500');
             document.querySelectorAll('#content-area > div').forEach(c => c.classList.add('hidden'));
@@ -494,14 +862,18 @@
                 showNotification('데이터베이스에 연결되지 않아 저장할 수 없습니다.', true);
                 return;
             }
-            const newReceiving = { date: document.getElementById('receive-date').value, materialName: document.getElementById('receive-material-name').value, materialCode: document.getElementById('receive-material-code').value, testNo: document.getElementById('receive-test-no').value, quantity: Number(document.getElementById('receive-quantity').value), supplier: document.getElementById('receive-supplier').value, expiryDate: document.getElementById('receive-expiry-date').value, remarks: document.getElementById('receive-remarks').value, createdAt: new Date(), };
+            const unit = receiveUnitSelect.value;
+            const specificGravity = (unit.toLowerCase() === 'l' || unit.toLowerCase() === 'ml')
+                ? parseFloat(receiveSpecificGravityInput.value) || 1
+                : 1;
+            const newReceiving = { date: document.getElementById('receive-date').value, materialName: document.getElementById('receive-material-name').value, materialCode: document.getElementById('receive-material-code').value, testNo: document.getElementById('receive-test-no').value, quantity: parseFormattedNumber(receiveQuantityInput.value), unit: unit, specificGravity: specificGravity, supplier: document.getElementById('receive-supplier').value, expiryDate: document.getElementById('receive-expiry-date').value, remarks: document.getElementById('receive-remarks').value, createdAt: new Date(), };
             try {
                 await addDoc(receivingCollection, newReceiving);
                 receivingForm.reset();
+                toggleSpecificGravityInput(); // Reset the visibility after submission
                 showNotification('입고 정보가 성공적으로 저장되었습니다.');
             } catch (error) { console.error("Error adding document: ", error); showNotification('저장에 실패했습니다.', true); }
         }
-
         async function handleIssuingSubmit(e) {
             e.preventDefault();
             if (!isDbReady || !userId) {
@@ -509,8 +881,8 @@
                 return;
             }
             const receivingId = document.getElementById('issue-receiving-id').value;
-            const issueQuantity = Number(document.getElementById('issue-quantity').value);
-            const batchStock = Number(document.getElementById('issue-modal-batch-stock').textContent);
+            const issueQuantity = parseFormattedNumber(issueQuantityInput.value);
+            const batchStock = parseFormattedNumber(document.getElementById('issue-modal-batch-stock').textContent);
             if (issueQuantity > batchStock) {
                 showNotification('출고량이 해당 배치의 재고보다 많을 수 없습니다.', true);
                 return;
@@ -522,7 +894,7 @@
                 return;
             }
             const receivingData = receivingDocSnap.data();
-            const newIssuing = { date: document.getElementById('issue-date').value, quantity: issueQuantity, testNo: document.getElementById('issue-test-no').value, productName: document.getElementById('issue-product-name').value, mfgNo: document.getElementById('issue-mfg-no').value, remarks: document.getElementById('issue-remarks').value, receivingId: receivingId, materialName: receivingData.materialName, materialCode: receivingData.materialCode, createdAt: new Date(), };
+            const newIssuing = { date: document.getElementById('issue-date').value, quantity: issueQuantity, unit: document.getElementById('issue-unit').value, testNo: document.getElementById('issue-test-no').value, productName: document.getElementById('issue-product-name').value, mfgNo: document.getElementById('issue-mfg-no').value, remarks: document.getElementById('issue-remarks').value, receivingId: receivingId, materialName: receivingData.materialName, materialCode: receivingData.materialCode, createdAt: new Date(), };
             try {
                 await addDoc(issuingCollection, newIssuing);
                 closeIssueModal();
@@ -532,27 +904,87 @@
         
         function handleDetailClick(e) {
             const row = e.target.closest('tr');
+            if (e.target.classList.contains('remarks-cell') || e.target.classList.contains('converted-value')) return; 
             if (!row || !row.dataset.name) return;
             openDetailModal(row.dataset.name, row.dataset.code);
         }
 
         // --- Modal Control ---
         function closePasswordModal() { passwordModal.classList.add('hidden'); passwordInput.value = ''; passwordError.classList.add('hidden'); }
-        function openIssueModal(e) { e.stopPropagation(); const button = e.target; document.getElementById('issue-receiving-id').value = button.dataset.id; document.getElementById('issue-modal-material-name').textContent = button.dataset.name; document.getElementById('issue-modal-material-code').textContent = button.dataset.code; document.getElementById('issue-modal-batch-stock').textContent = button.dataset.stock; document.getElementById('issue-quantity').max = button.dataset.stock; document.getElementById('issue-date').valueAsDate = new Date(); issueModal.classList.remove('hidden'); }
-        function closeIssueModal() { issuingForm.reset(); issueModal.classList.add('hidden'); }
-        function openDetailModal(materialName, materialCode) { document.getElementById('detail-modal-title').textContent = `[${materialName} (${materialCode})] 상세 내역`; const filteredReceiving = globalReceivingData.filter(item => item.materialName === materialName && item.materialCode === materialCode).sort((a,b) => b.date.localeCompare(a.date)); const filteredIssuing = globalIssuingData.filter(item => item.materialName === materialName && item.materialCode === materialCode).sort((a,b) => b.date.localeCompare(a.date)); const detailReceivingList = document.getElementById('detail-receiving-list'); detailReceivingList.innerHTML = ''; filteredReceiving.forEach(item => { const row = detailReceivingList.insertRow(); row.className = 'border-b'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell">${item.testNo}</td><td class="table-cell">${item.quantity}</td><td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell">${item.remarks}</td>`; }); const detailIssuingList = document.getElementById('detail-issuing-list'); detailIssuingList.innerHTML = ''; filteredIssuing.forEach(item => { const row = detailIssuingList.insertRow(); row.className = 'border-b'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell">${item.testNo}</td><td class="table-cell">${item.quantity}</td><td class="table-cell">${item.productName}</td><td class="table-cell">${item.mfgNo}</td><td class="table-cell">${item.remarks}</td>`; }); detailModal.classList.remove('hidden'); }
+        function openIssueModal(e) {
+            e.stopPropagation();
+            const button = e.target;
+            document.getElementById('issue-receiving-id').value = button.dataset.id;
+            document.getElementById('issue-modal-material-name').textContent = button.dataset.name;
+            document.getElementById('issue-modal-material-code').textContent = button.dataset.code;
+            document.getElementById('issue-modal-batch-stock').textContent = `${formatNumber(button.dataset.stock)} ${button.dataset.unit || ''}`;
+            issueQuantityInput.max = button.dataset.stock;
+            document.getElementById('issue-date').valueAsDate = new Date();
+            issueUnitSelect.value = button.dataset.unit || (globalUnitsData.length > 0 ? globalUnitsData[0].name : '');
+            issueModal.classList.remove('hidden');
+        }
+        function closeIssueModal() { issuingForm.reset(); issueQuantityInput.value = ''; issueModal.classList.add('hidden'); }
+        function openDetailModal(materialName, materialCode) {
+            document.getElementById('detail-modal-title').textContent = `[${materialName} (${materialCode})] 상세 내역`;
+            const filteredReceiving = globalReceivingData.filter(item => item.materialName === materialName && item.materialCode === materialCode).sort((a,b) => b.date.localeCompare(a.date));
+            const filteredIssuing = globalIssuingData.filter(item => item.materialName === materialName && item.materialCode === materialCode).sort((a,b) => b.date.localeCompare(a.date));
+            const detailReceivingList = document.getElementById('detail-receiving-list');
+            detailReceivingList.innerHTML = '';
+            filteredReceiving.forEach(item => { const row = detailReceivingList.insertRow(); row.className = 'border-b'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell">${item.testNo}</td>${createQuantityCell(item.quantity, item.unit, item.specificGravity)}<td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell remarks-cell" data-full-remarks="${item.remarks || ''}">${(item.remarks || '').substring(0,15)}...</td>`; });
+            const detailIssuingList = document.getElementById('detail-issuing-list');
+            detailIssuingList.innerHTML = '';
+            filteredIssuing.forEach(item => { 
+                const receivingDoc = globalReceivingData.find(r => r.id === item.receivingId);
+                const sg = receivingDoc ? receivingDoc.specificGravity : 1;
+                const row = detailIssuingList.insertRow(); row.className = 'border-b'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell">${item.testNo}</td>${createQuantityCell(item.quantity, item.unit, sg)}<td class="table-cell">${item.productName}</td><td class="table-cell">${item.mfgNo}</td><td class="table-cell remarks-cell" data-full-remarks="${item.remarks || ''}">${(item.remarks || '').substring(0,15)}...</td>`; });
+            detailModal.classList.remove('hidden');
+        }
         function closeDetailModal() { detailModal.classList.add('hidden'); }
+        function openRemarksModal(text) { remarksModalContent.textContent = text; remarksModal.classList.remove('hidden'); }
+        function closeRemarksModal() { remarksModal.classList.add('hidden'); }
 
         // --- Excel Export Function ---
         function generateAndDownloadExcel() {
-            const inventory = {};
-            globalReceivingData.forEach(item => { const key = `${item.materialName}_${item.materialCode}`; if (!inventory[key]) { inventory[key] = { name: item.materialName, code: item.materialCode, totalReceived: 0, totalIssued: 0 }; } inventory[key].totalReceived += Number(item.quantity); });
-            globalIssuingData.forEach(item => { const key = `${item.materialName}_${item.materialCode}`; if (inventory[key]) inventory[key].totalIssued += Number(item.quantity); });
-            const inventoryData = Object.values(inventory).map(item => ({ '원료명': item.name, '원료 코드': item.code, '총 입고량': item.totalReceived, '총 출고량': item.totalIssued, '현재고': item.totalReceived - item.totalIssued }));
+             const inventory = {};
+            [...globalReceivingData, ...globalIssuingData].forEach(item => {
+                const key = `${item.materialName}_${item.materialCode}`;
+                if (!inventory[key]) {
+                    inventory[key] = { name: item.materialName, code: item.materialCode, stock: {} };
+                }
+                const unit = item.unit || 'N/A';
+                if (!inventory[key].stock[unit]) {
+                    inventory[key].stock[unit] = { received: 0, issued: 0 };
+                }
+                const quantity = parseFormattedNumber(item.quantity);
+                if (item.createdAt) {
+                     if (item.supplier !== undefined) {
+                        inventory[key].stock[unit].received += quantity;
+                    } else {
+                        inventory[key].stock[unit].issued += quantity;
+                    }
+                }
+            });
+            const inventoryData = Object.values(inventory).map(item => {
+                const stockStrings = Object.entries(item.stock).map(([unit, values]) => `${values.received - values.issued} ${unit}`).join(', ');
+                 const materialReceivingBatches = globalReceivingData.filter(r => r.materialName === item.name && r.materialCode === item.code);
+                let totalConvertedKg = 0;
+                materialReceivingBatches.forEach(batch => {
+                    const issuedQtyForThisBatch = globalIssuingData.filter(issue => issue.receivingId === batch.id).reduce((sum, issue) => sum + parseFormattedNumber(issue.quantity), 0);
+                    const remainingQty = parseFormattedNumber(batch.quantity) - issuedQtyForThisBatch;
+                    const sg = batch.specificGravity || 1;
+                    const unit = (batch.unit || '').toLowerCase();
+                    let convertedQty = 0;
+                    if (unit === 'kg') { convertedQty = remainingQty; } else if (unit === 'g') { convertedQty = remainingQty / 1000; } else if (unit === 'l') { convertedQty = remainingQty * sg; } else if (unit === 'ml') { convertedQty = (remainingQty * sg) / 1000; }
+                    totalConvertedKg += convertedQty;
+                });
+                return { '원료명': item.name, '원료 코드': item.code, '현재고': stockStrings, '환산 재고 (KG)': totalConvertedKg.toFixed(2) };
+            });
+
             const issuedQtys = {};
-            globalIssuingData.forEach(issue => { issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + Number(issue.quantity); });
-            const receivingData = globalReceivingData.map(item => { const remainingStock = Number(item.quantity) - (issuedQtys[item.id] || 0); const expiryDate = new Date(item.expiryDate); const today = new Date(); today.setHours(0, 0, 0, 0); const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)); return { '입고일': item.date, '원료명': item.materialName, '원료 코드': item.materialCode, '시험의뢰번호': item.testNo, '입고량': item.quantity, '남은 재고': remainingStock, '업체명': item.supplier, '유통기한': item.expiryDate, '잔여일': remainingDays >= 0 ? `${remainingDays}일` : '만료', '비고': item.remarks }; });
-            const issuingData = globalIssuingData.map(item => ({ '출고일': item.date, '원료명': item.materialName, '원료 코드': item.materialCode, '시험번호': item.testNo, '출고량': item.quantity, '제품명': item.productName, '제조번호': item.mfgNo, '비고': item.remarks }));
+            globalIssuingData.forEach(issue => { issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + parseFormattedNumber(issue.quantity); });
+            const receivingData = globalReceivingData.map(item => { const remainingStock = parseFormattedNumber(item.quantity) - (issuedQtys[item.id] || 0); const expiryDate = new Date(item.expiryDate); const today = new Date(); today.setHours(0, 0, 0, 0); const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)); return { '입고일': item.date, '원료명': item.materialName, '원료 코드': item.materialCode, '시험번호': item.testNo, '입고량': `${item.quantity} ${item.unit || ''}`, '남은 재고': `${remainingStock} ${item.unit || ''}`, '업체명': item.supplier, '유통기한': item.expiryDate, '잔여일': remainingDays >= 0 ? `${remainingDays}일` : '만료', '비고': item.remarks }; });
+            const issuingData = globalIssuingData.map(item => ({ '출고일': item.date, '원료명': item.materialName, '원료 코드': item.materialCode, '시험번호': item.testNo, '출고량': `${item.quantity} ${item.unit || ''}`, '제품명': item.productName, '제조번호': item.mfgNo, '비고': item.remarks }));
+            
             const wb = XLSX.utils.book_new();
             const ws1 = XLSX.utils.json_to_sheet(inventoryData);
             const ws2 = XLSX.utils.json_to_sheet(receivingData);
