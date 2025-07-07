@@ -112,17 +112,56 @@
         <!-- 입고 관리 -->
         <div class="bg-white p-6 rounded-lg shadow-lg mb-8 no-print">
             <h2 class="text-2xl font-bold mb-4 border-b pb-2">원료 입고 등록</h2>
-            <form id="receiving-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div class="flex flex-col"><label for="receive-date" class="text-sm font-medium text-gray-700 mb-1">입고일</label><input type="date" id="receive-date" class="p-2 border rounded" required></div>
-                <div class="flex flex-col"><label for="receive-material-name" class="text-sm font-medium text-gray-700 mb-1">원료명</label><input type="text" id="receive-material-name" placeholder="원료명" class="p-2 border rounded" required></div>
-                <div class="flex flex-col"><label for="receive-material-code" class="text-sm font-medium text-gray-700 mb-1">원료 코드</label><input type="text" id="receive-material-code" placeholder="원료 코드" class="p-2 border rounded" required></div>
-                <div class="flex flex-col"><label for="receive-test-no" class="text-sm font-medium text-gray-700 mb-1">시험번호</label><input type="text" id="receive-test-no" placeholder="시험번호" class="p-2 border rounded" required></div>
-                <div class="flex flex-col"><label for="receive-quantity" class="text-sm font-medium text-gray-700 mb-1">입고량</label><input type="text" id="receive-quantity" placeholder="입고량" class="p-2 border rounded" required></div>
-                <div class="flex flex-col"><label for="receive-unit" class="text-sm font-medium text-gray-700 mb-1">단위 / 비중</label><div class="flex gap-2"><select id="receive-unit" class="p-2 border rounded w-1/2" required></select><input type="number" id="receive-specific-gravity" placeholder="비중" step="0.01" class="p-2 border rounded w-1/2 hidden"></div></div>
-                <div class="flex flex-col"><label for="receive-supplier" class="text-sm font-medium text-gray-700 mb-1">업체명</label><input type="text" id="receive-supplier" placeholder="업체명" class="p-2 border rounded"></div>
-                <div class="flex flex-col"><label for="receive-expiry-date" class="text-sm font-medium text-gray-700 mb-1">유통기한</label><input type="date" id="receive-expiry-date" class="p-2 border rounded" required></div>
-                <div class="flex flex-col lg:col-span-2"><label for="receive-remarks" class="text-sm font-medium text-gray-700 mb-1">비고</label><textarea id="receive-remarks" placeholder="비고" class="p-2 border rounded" rows="3"></textarea></div>
-                <div class="lg:col-span-4"><button type="submit" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition duration-300 w-full">입고 등록</button></div>
+            <form id="receiving-form" class="space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left Column: Input Fields -->
+                    <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex flex-col">
+                            <label for="receive-date" class="text-sm font-medium text-gray-700 mb-1">입고일</label>
+                            <input type="date" id="receive-date" class="p-2 border rounded" required>
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="receive-material-name" class="text-sm font-medium text-gray-700 mb-1">원료명</label>
+                            <input type="text" id="receive-material-name" placeholder="원료명" class="p-2 border rounded" required>
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="receive-material-code" class="text-sm font-medium text-gray-700 mb-1">원료 코드</label>
+                            <input type="text" id="receive-material-code" placeholder="원료 코드" class="p-2 border rounded" required>
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="receive-test-no" class="text-sm font-medium text-gray-700 mb-1">시험번호</label>
+                            <input type="text" id="receive-test-no" placeholder="시험번호" class="p-2 border rounded" required>
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="receive-quantity" class="text-sm font-medium text-gray-700 mb-1">입고량</label>
+                            <input type="text" id="receive-quantity" placeholder="입고량" class="p-2 border rounded" required>
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="receive-unit" class="text-sm font-medium text-gray-700 mb-1">단위 / 비중</label>
+                            <div class="flex gap-2">
+                                <select id="receive-unit" class="p-2 border rounded w-1/2" required></select>
+                                <input type="number" id="receive-specific-gravity" placeholder="비중" step="0.01" class="p-2 border rounded w-1/2 hidden">
+                            </div>
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="receive-supplier" class="text-sm font-medium text-gray-700 mb-1">업체명</label>
+                            <input type="text" id="receive-supplier" placeholder="업체명" class="p-2 border rounded">
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="receive-expiry-date" class="text-sm font-medium text-gray-700 mb-1">유통기한</label>
+                            <input type="date" id="receive-expiry-date" class="p-2 border rounded" required>
+                        </div>
+                    </div>
+                    <!-- Right Column: Remarks -->
+                    <div class="lg:col-span-1 flex flex-col">
+                        <label for="receive-remarks" class="text-sm font-medium text-gray-700 mb-1">비고</label>
+                        <textarea id="receive-remarks" placeholder="비고" class="p-2 border rounded h-full flex-grow"></textarea>
+                    </div>
+                </div>
+                <!-- Submit button below the grid -->
+                <div class="mt-6">
+                    <button type="submit" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-300 w-full font-semibold">입고 등록</button>
+                </div>
             </form>
         </div>
 
@@ -310,17 +349,17 @@
 
     <script type="module">
         // Firebase SDK imports and config
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
         
         const firebaseConfig = {
-            // apiKey: "AIza...",
-            // authDomain: "your-project-id.firebaseapp.com",
-            // projectId: "your-project-id",
-            // storageBucket: "your-project-id.appspot.com",
-            // messagingSenderId: "...",
-            // appId: "1:..."
+            apiKey: "AIzaSyAMKGrBLshg6lpO0pCtp7jdIhiCjAmM1WQ",
+            authDomain: "management-raw.firebaseapp.com",
+            projectId: "management-raw",
+            storageBucket: "management-raw.appspot.com",
+            messagingSenderId: "697218209723",
+            appId: "1:697218209723:web:30c6baadc3713ececd569e"
         };
 
         // --- 아래 코드는 수정할 필요 없습니다. ---
