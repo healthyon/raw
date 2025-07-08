@@ -103,9 +103,11 @@
             <h1 class="text-3xl md:text-4xl font-bold text-gray-900">원료 수불 관리 프로그램</h1>
             <p class="text-gray-600 mt-2">원료의 입고, 출고 및 재고를 실시간으로 관리합니다.</p>
             <div class="mt-6 flex justify-center gap-4">
+                <button id="upload-btn" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors">엑셀 업로드</button>
                 <button id="manage-units-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">단위 관리</button>
                 <button id="print-btn" class="bg-gray-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-colors">인쇄</button>
-                <button id="save-btn" class="bg-teal-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-teal-700 transition-colors">엑셀로 저장</button>
+                <button id="save-btn" class="bg-teal-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-teal-700 transition-colors">엑셀 다운</button>
+                <input type="file" id="excel-upload-input" class="hidden" accept=".xlsx, .xls">
             </div>
         </header>
 
@@ -180,7 +182,16 @@
             <div id="inventory-content" class="bg-white p-6 rounded-lg shadow-lg">
                 <div class="flex flex-wrap gap-4 items-center mb-4">
                     <h3 class="text-xl font-bold">실시간 재고 현황</h3>
-                    <input type="text" id="inventory-search" placeholder="원료명/코드 검색 (초성 가능)" class="p-2 border rounded w-full md:w-auto flex-grow no-print">
+                    <select id="inventory-filter" class="p-2 border rounded no-print">
+                        <option value="all">전체</option>
+                        <option value="name">원료명</option>
+                        <option value="code">원료 코드</option>
+                        <option value="currentStockStr">현 재고</option>
+                        <option value="earliestExpiryDate">유통기한</option>
+                        <option value="remainingDays">잔여일</option>
+                        <option value="remarks">비고</option>
+                    </select>
+                    <input type="text" id="inventory-search" placeholder="검색..." class="p-2 border rounded w-full md:w-auto flex-grow no-print">
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
@@ -204,7 +215,20 @@
             <div id="receiving-content" class="bg-white p-6 rounded-lg shadow-lg hidden">
                 <div class="flex flex-wrap gap-4 items-center mb-4">
                     <h3 class="text-xl font-bold">입고 내역</h3>
-                    <input type="text" id="receiving-search" placeholder="원료명/코드/업체명 등 검색" class="p-2 border rounded w-full md:w-auto flex-grow no-print">
+                     <select id="receiving-filter" class="p-2 border rounded no-print">
+                        <option value="all">전체</option>
+                        <option value="date">입고일</option>
+                        <option value="materialName">원료명</option>
+                        <option value="materialCode">원료 코드</option>
+                        <option value="testNo">시험번호</option>
+                        <option value="quantity">입고량</option>
+                        <option value="remainingStock">남은 재고</option>
+                        <option value="supplier">업체명</option>
+                        <option value="expiryDate">유통기한</option>
+                        <option value="remainingDays">잔여일</option>
+                        <option value="remarks">비고</option>
+                    </select>
+                    <input type="text" id="receiving-search" placeholder="검색..." class="p-2 border rounded w-full md:w-auto flex-grow no-print">
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
@@ -232,7 +256,18 @@
             <div id="issuing-content" class="bg-white p-6 rounded-lg shadow-lg hidden">
                  <div class="flex flex-wrap gap-4 items-center mb-4">
                     <h3 class="text-xl font-bold">출고 내역</h3>
-                    <input type="text" id="issuing-search" placeholder="원료명/코드/제품명 등 검색" class="p-2 border rounded w-full md:w-auto flex-grow no-print">
+                    <select id="issuing-filter" class="p-2 border rounded no-print">
+                        <option value="all">전체</option>
+                        <option value="date">출고일</option>
+                        <option value="materialName">원료명</option>
+                        <option value="materialCode">원료 코드</option>
+                        <option value="testNo">시험번호</option>
+                        <option value="quantity">출고량</option>
+                        <option value="productName">제품명</option>
+                        <option value="mfgNo">제조번호</option>
+                        <option value="remarks">비고</option>
+                    </select>
+                    <input type="text" id="issuing-search" placeholder="검색..." class="p-2 border rounded w-full md:w-auto flex-grow no-print">
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
@@ -246,6 +281,7 @@
                                 <th class="table-cell text-center sortable" data-sort="productName">제품명</th>
                                 <th class="table-cell text-center">제조번호</th>
                                 <th class="table-cell text-center">비고</th>
+                                <th class="table-cell text-center no-print-col">작업</th>
                             </tr>
                         </thead>
                         <tbody id="issuing-list"></tbody>
@@ -280,6 +316,34 @@
         </div>
     </div>
     
+    <!-- 출고 수정 모달 -->
+    <div id="edit-issuing-modal" class="modal-backdrop hidden no-print">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3 class="text-xl font-bold mb-4">출고 내역 수정</h3>
+            <form id="edit-issuing-form" class="space-y-4">
+                <input type="hidden" id="edit-issuing-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium">출고일</label><input type="date" id="edit-issue-date" class="p-2 border rounded w-full" required></div>
+                    <div>
+                        <label class="block text-sm font-medium">출고량</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="edit-issue-quantity" placeholder="출고량" class="p-2 border rounded w-2/3" required>
+                            <select id="edit-issue-unit" class="p-2 border rounded w-1/3" required></select>
+                        </div>
+                    </div>
+                    <div><label class="block text-sm font-medium">시험번호</label><input type="text" id="edit-issue-test-no" class="p-2 border rounded w-full" required></div>
+                    <div><label class="block text-sm font-medium">제품명</label><input type="text" id="edit-issue-product-name" class="p-2 border rounded w-full"></div>
+                    <div><label class="block text-sm font-medium">제조번호</label><input type="text" id="edit-issue-mfg-no" class="p-2 border rounded w-full"></div>
+                </div>
+                <div><label class="block text-sm font-medium">비고</label><textarea id="edit-issue-remarks" class="p-2 border rounded w-full" rows="3"></textarea></div>
+                <div class="mt-6 flex justify-end gap-4">
+                    <button type="button" id="cancel-edit-issuing" class="bg-gray-300 text-gray-800 p-2 rounded hover:bg-gray-400">취소</button>
+                    <button type="submit" class="bg-yellow-600 text-white p-2 rounded hover:bg-yellow-700">수정 저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- 출고 처리 모달 -->
     <div id="issue-modal" class="modal-backdrop hidden no-print">
         <div class="modal-content" style="max-width: 500px;">
@@ -329,8 +393,8 @@
     <!-- 비밀번호 입력 모달 -->
     <div id="password-modal" class="modal-backdrop hidden no-print">
         <div class="modal-content" style="max-width: 400px;">
-            <h3 class="text-xl font-bold mb-4">비밀번호 입력</h3>
-            <p class="text-gray-600 mb-4">파일을 저장하려면 비밀번호를 입력하세요.</p>
+            <h3 class="text-xl font-bold mb-4">보안 확인</h3>
+            <p class="text-gray-600 mb-4">작업을 계속하려면 비밀번호를 입력하세요.</p>
             <form id="password-form">
                 <input type="password" id="password-input" class="p-2 border rounded w-full" placeholder="비밀번호" required>
                 <div id="password-error" class="text-red-500 text-sm mt-2 hidden">비밀번호가 일치하지 않습니다.</div>
@@ -393,7 +457,7 @@
     <script type="module">
         // Firebase SDK imports and config
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
         
         const firebaseConfig = {
@@ -412,6 +476,7 @@
         let sortState = {};
         let isDbReady = false;
         let currentAction = { type: null, id: null };
+        let uiElements = {};
 
         try {
             const configToUse = typeof __firebase_config !== 'undefined' && __firebase_config !== '{}'
@@ -453,52 +518,61 @@
             });
         }
         
-        // --- UI Elements ---
-        const editReceivingModal = document.getElementById('edit-receiving-modal');
-        const editReceivingForm = document.getElementById('edit-receiving-form');
-        const cancelEditReceivingBtn = document.getElementById('cancel-edit-receiving');
-        const editRemarksModal = document.getElementById('edit-remarks-modal');
-        const editRemarksForm = document.getElementById('edit-remarks-form');
-        const cancelEditRemarksBtn = document.getElementById('cancel-edit-remarks');
-        // Other elements...
-        const manageUnitsBtn = document.getElementById('manage-units-btn');
-        const unitManagementModal = document.getElementById('unit-management-modal');
-        const closeUnitModalBtn = document.getElementById('close-unit-modal');
-        const unitForm = document.getElementById('unit-form');
-        const unitIdInput = document.getElementById('unit-id');
-        const unitNameInput = document.getElementById('unit-name');
-        const submitUnitBtn = document.getElementById('submit-unit-btn');
-        const cancelEditUnitBtn = document.getElementById('cancel-edit-unit-btn');
-        const unitListManagement = document.getElementById('unit-list-management');
-        const receiveUnitSelect = document.getElementById('receive-unit');
-        const issueUnitSelect = document.getElementById('issue-unit');
-        const receiveQuantityInput = document.getElementById('receive-quantity');
-        const issueQuantityInput = document.getElementById('issue-quantity');
-        const receiveSpecificGravityInput = document.getElementById('receive-specific-gravity');
-        const printBtn = document.getElementById('print-btn');
-        const saveBtn = document.getElementById('save-btn');
-        const passwordModal = document.getElementById('password-modal');
-        const passwordForm = document.getElementById('password-form');
-        const passwordInput = document.getElementById('password-input');
-        const passwordError = document.getElementById('password-error');
-        const cancelPasswordBtn = document.getElementById('cancel-password');
-        const receivingForm = document.getElementById('receiving-form');
-        const issuingForm = document.getElementById('issuing-form');
-        const receivingList = document.getElementById('receiving-list');
-        const issuingList = document.getElementById('issuing-list');
-        const inventoryList = document.getElementById('inventory-list');
-        const issueModal = document.getElementById('issue-modal');
-        const detailModal = document.getElementById('detail-modal');
-        const cancelIssueBtn = document.getElementById('cancel-issue');
-        const closeDetailModalBtn = document.getElementById('close-detail-modal');
-        const remarksModal = document.getElementById('remarks-modal');
-        const closeRemarksModalBtn = document.getElementById('close-remarks-modal');
-        const remarksModalContent = document.getElementById('remarks-modal-content');
-        const searchInputs = {
-            inventory: document.getElementById('inventory-search'),
-            receiving: document.getElementById('receiving-search'),
-            issuing: document.getElementById('issuing-search'),
-        };
+        function initializeUIElements() {
+            uiElements = {
+                editReceivingModal: document.getElementById('edit-receiving-modal'),
+                editReceivingForm: document.getElementById('edit-receiving-form'),
+                cancelEditReceivingBtn: document.getElementById('cancel-edit-receiving'),
+                editRemarksModal: document.getElementById('edit-remarks-modal'),
+                editRemarksForm: document.getElementById('edit-remarks-form'),
+                cancelEditRemarksBtn: document.getElementById('cancel-edit-remarks'),
+                uploadBtn: document.getElementById('upload-btn'),
+                excelUploadInput: document.getElementById('excel-upload-input'),
+                manageUnitsBtn: document.getElementById('manage-units-btn'),
+                unitManagementModal: document.getElementById('unit-management-modal'),
+                closeUnitModalBtn: document.getElementById('close-unit-modal'),
+                unitForm: document.getElementById('unit-form'),
+                unitIdInput: document.getElementById('unit-id'),
+                unitNameInput: document.getElementById('unit-name'),
+                submitUnitBtn: document.getElementById('submit-unit-btn'),
+                cancelEditUnitBtn: document.getElementById('cancel-edit-unit-btn'),
+                unitListManagement: document.getElementById('unit-list-management'),
+                receiveUnitSelect: document.getElementById('receive-unit'),
+                issueUnitSelect: document.getElementById('issue-unit'),
+                receiveQuantityInput: document.getElementById('receive-quantity'),
+                issueQuantityInput: document.getElementById('issue-quantity'),
+                receiveSpecificGravityInput: document.getElementById('receive-specific-gravity'),
+                printBtn: document.getElementById('print-btn'),
+                saveBtn: document.getElementById('save-btn'),
+                passwordModal: document.getElementById('password-modal'),
+                passwordForm: document.getElementById('password-form'),
+                passwordInput: document.getElementById('password-input'),
+                passwordError: document.getElementById('password-error'),
+                cancelPasswordBtn: document.getElementById('cancel-password'),
+                receivingForm: document.getElementById('receiving-form'),
+                issuingForm: document.getElementById('issuing-form'),
+                receivingList: document.getElementById('receiving-list'),
+                issuingList: document.getElementById('issuing-list'),
+                inventoryList: document.getElementById('inventory-list'),
+                issueModal: document.getElementById('issue-modal'),
+                detailModal: document.getElementById('detail-modal'),
+                cancelIssueBtn: document.getElementById('cancel-issue'),
+                closeDetailModalBtn: document.getElementById('close-detail-modal'),
+                remarksModal: document.getElementById('remarks-modal'),
+                closeRemarksModalBtn: document.getElementById('close-remarks-modal'),
+                remarksModalContent: document.getElementById('remarks-modal-content'),
+                searchInputs: {
+                    inventory: document.getElementById('inventory-search'),
+                    receiving: document.getElementById('receiving-search'),
+                    issuing: document.getElementById('issuing-search'),
+                },
+                searchFilters: {
+                    inventory: document.getElementById('inventory-filter'),
+                    receiving: document.getElementById('receiving-filter'),
+                    issuing: document.getElementById('issuing-filter'),
+                }
+            };
+        }
 
         // --- Formatting Utility ---
         function formatNumber(num) {
@@ -570,12 +644,20 @@
             renderIssuingList();
         }
 
-        function getFilteredAndSortedData(data, searchInput, sortKey, fieldsToSearch) {
+        function getFilteredAndSortedData(data, searchInput, filterSelect, sortKey, allFieldsToSearch) {
             const searchTerm = searchInput.value;
+            const selectedFilter = filterSelect.value;
+
             const filtered = data.filter(item => {
                 if (!searchTerm) return true;
-                return fieldsToSearch.some(field => chosungMatch(item[field], searchTerm));
+                
+                if (selectedFilter === 'all') {
+                    return allFieldsToSearch.some(field => chosungMatch(item[field], searchTerm));
+                } else {
+                    return chosungMatch(item[selectedFilter], searchTerm);
+                }
             });
+
             if (sortState[sortKey] && sortState[sortKey].key) {
                 const { key, direction } = sortState[sortKey];
                 filtered.sort((a, b) => {
@@ -660,12 +742,12 @@
                 };
             }).filter(item => item.currentStockStr !== ''); // Filter out items with no stock
 
-            const processedData = getFilteredAndSortedData(inventoryData, searchInputs.inventory, 'inventory', ['name', 'code']);
+            const processedData = getFilteredAndSortedData(inventoryData, uiElements.searchInputs.inventory, uiElements.searchFilters.inventory, 'inventory', ['name', 'code', 'currentStockStr', 'earliestExpiryDate', 'remainingDays', 'remarks']);
             
-            inventoryList.innerHTML = '';
+            uiElements.inventoryList.innerHTML = '';
             processedData.forEach((item, index) => {
                 const remarksCell = createRemarksCell(item.remarks, item.remarksDocId);
-                const row = inventoryList.insertRow();
+                const row = uiElements.inventoryList.insertRow();
                 row.className = 'border-b hover:bg-gray-50';
                 row.dataset.name = item.name;
                 row.dataset.code = item.code;
@@ -688,17 +770,18 @@
                 issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + parseFormattedNumber(issue.quantity);
             });
             let receivingData = globalReceivingData.map(item => { const remainingStock = parseFormattedNumber(item.quantity) - (issuedQtys[item.id] || 0); const expiryDate = new Date(item.expiryDate); const today = new Date(); today.setHours(0,0,0,0); const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)); return { ...item, remainingStock, remainingDays }; });
-            const processedData = getFilteredAndSortedData(receivingData, searchInputs.receiving, 'receiving', ['date', 'materialName', 'materialCode', 'testNo', 'supplier']);
-            receivingList.innerHTML = '';
+            const processedData = getFilteredAndSortedData(receivingData, uiElements.searchInputs.receiving, uiElements.searchFilters.receiving, 'receiving', ['date', 'materialName', 'materialCode', 'testNo', 'supplier', 'quantity', 'remainingStock', 'expiryDate', 'remainingDays', 'remarks']);
+            uiElements.receivingList.innerHTML = '';
             processedData.forEach(item => {
                 const remarksCell = createRemarksCell(item.remarks);
                 const quantityCell = createQuantityCell(item.quantity, item.unit, item.specificGravity);
                 const remainingStockCell = createQuantityCell(item.remainingStock, item.unit, item.specificGravity);
                 const isIssued = globalIssuingData.some(issue => issue.receivingId === item.id);
+                const materialNameClass = item.updatedAt ? 'text-blue-600 font-bold' : '';
 
-                const row = receivingList.insertRow();
+                const row = uiElements.receivingList.insertRow();
                 row.className = 'border-b hover:bg-gray-50';
-                row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td>${quantityCell}${remainingStockCell}<td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell ${item.remainingDays < 30 ? 'text-red-500 font-bold' : ''}">${item.remainingDays >= 0 ? `${item.remainingDays}일` : '만료'}</td>${remarksCell}
+                row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium ${materialNameClass}">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td>${quantityCell}${remainingStockCell}<td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell ${item.remainingDays < 30 ? 'text-red-500 font-bold' : ''}">${item.remainingDays >= 0 ? `${item.remainingDays}일` : '만료'}</td>${remarksCell}
                 <td class="table-cell no-print-col text-center space-x-2">
                     <button data-id="${item.id}" data-name="${item.materialName}" data-code="${item.materialCode}" data-stock="${item.remainingStock}" data-unit="${item.unit || ''}" class="issue-btn text-sm bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 disabled:bg-gray-400" ${item.remainingStock <= 0 ? 'disabled' : ''}>출고</button>
                     <button data-id="${item.id}" class="edit-btn text-sm bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 disabled:bg-gray-400" ${isIssued ? 'disabled title="출고된 내역은 수정할 수 없습니다."' : ''}>수정</button>
@@ -708,16 +791,22 @@
         }
 
         function renderIssuingList() {
-            const processedData = getFilteredAndSortedData(globalIssuingData, searchInputs.issuing, 'issuing', ['date', 'materialName', 'materialCode', 'testNo', 'productName']);
-            issuingList.innerHTML = '';
+            const processedData = getFilteredAndSortedData(globalIssuingData, uiElements.searchInputs.issuing, uiElements.searchFilters.issuing, 'issuing', ['date', 'materialName', 'materialCode', 'testNo', 'productName', 'quantity', 'mfgNo', 'remarks']);
+            uiElements.issuingList.innerHTML = '';
             processedData.forEach(item => {
                 const receivingDoc = globalReceivingData.find(r => r.id === item.receivingId);
                 const sg = receivingDoc ? receivingDoc.specificGravity : 1;
                 const quantityCell = createQuantityCell(item.quantity, item.unit, sg);
                 const remarksCell = createRemarksCell(item.remarks);
-                const row = issuingList.insertRow();
+                const materialNameClass = item.updatedAt ? 'text-blue-600 font-bold' : '';
+
+                const row = uiElements.issuingList.insertRow();
                 row.className = 'border-b hover:bg-gray-50';
-                row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td>${quantityCell}<td class="table-cell">${item.productName}</td><td class="table-cell">${item.mfgNo}</td>${remarksCell}`;
+                row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium ${materialNameClass}">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td>${quantityCell}<td class="table-cell">${item.productName}</td><td class="table-cell">${item.mfgNo}</td>${remarksCell}
+                <td class="table-cell no-print-col text-center space-x-2">
+                    <button data-id="${item.id}" class="edit-issuing-btn text-sm bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600">수정</button>
+                    <button data-id="${item.id}" class="delete-issuing-btn text-sm bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">삭제</button>
+                </td>`;
             });
         }
         
@@ -771,7 +860,7 @@
         }
         
         function renderUnitManagementList() {
-            unitListManagement.innerHTML = '';
+            uiElements.unitListManagement.innerHTML = '';
             globalUnitsData.forEach(unit => {
                 const li = document.createElement('li');
                 li.className = 'flex justify-between items-center p-2 bg-gray-100 rounded';
@@ -782,20 +871,24 @@
                         <button data-id="${unit.id}" class="delete-unit-btn text-red-500 hover:text-red-700">삭제</button>
                     </div>
                 `;
-                unitListManagement.appendChild(li);
+                uiElements.unitListManagement.appendChild(li);
             });
         }
 
         function populateUnitDropdowns() {
             const options = globalUnitsData.map(unit => `<option value="${unit.name}">${unit.name}</option>`).join('');
-            receiveUnitSelect.innerHTML = options;
-            issueUnitSelect.innerHTML = options;
+            uiElements.receiveUnitSelect.innerHTML = options;
+            uiElements.issueUnitSelect.innerHTML = options;
             document.getElementById('edit-receive-unit').innerHTML = options;
+            
+            // 'kg'을 기본값으로 설정
+            uiElements.receiveUnitSelect.value = 'kg';
+
             // After populating, check the initial state for the specific gravity input
-            toggleSpecificGravityInput(receiveUnitSelect, receiveSpecificGravityInput);
+            toggleSpecificGravityInput(uiElements.receiveUnitSelect, uiElements.receiveSpecificGravityInput);
         }
         
-        function toggleSpecificGravityInput(selectElement = receiveUnitSelect, inputElement = receiveSpecificGravityInput) {
+        function toggleSpecificGravityInput(selectElement = uiElements.receiveUnitSelect, inputElement = uiElements.receiveSpecificGravityInput) {
             const selectedUnit = selectElement.value.toLowerCase();
             if (selectedUnit === 'l' || selectedUnit === 'ml') {
                 inputElement.classList.remove('hidden');
@@ -806,25 +899,27 @@
 
         // --- Event Handlers ---
         document.addEventListener('DOMContentLoaded', () => {
+             initializeUIElements();
              setupEventListeners();
         });
 
         function setupEventListeners() {
             // Number formatting
-            receiveQuantityInput.addEventListener('input', formatNumberInput);
-            issueQuantityInput.addEventListener('input', formatNumberInput);
+            uiElements.receiveQuantityInput.addEventListener('input', formatNumberInput);
+            uiElements.issueQuantityInput.addEventListener('input', formatNumberInput);
             document.getElementById('edit-receive-quantity').addEventListener('input', formatNumberInput);
+            document.getElementById('edit-issue-quantity').addEventListener('input', formatNumberInput);
 
             // Unit select change
-            receiveUnitSelect.addEventListener('change', () => toggleSpecificGravityInput(receiveUnitSelect, receiveSpecificGravityInput));
+            uiElements.receiveUnitSelect.addEventListener('change', () => toggleSpecificGravityInput(uiElements.receiveUnitSelect, uiElements.receiveSpecificGravityInput));
             document.getElementById('edit-receive-unit').addEventListener('change', (e) => toggleSpecificGravityInput(e.target, document.getElementById('edit-receive-specific-gravity')));
 
             // New Unit Management Listeners
-            manageUnitsBtn.addEventListener('click', () => unitManagementModal.classList.remove('hidden'));
-            closeUnitModalBtn.addEventListener('click', () => unitManagementModal.classList.add('hidden'));
-            unitForm.addEventListener('submit', handleUnitFormSubmit);
-            cancelEditUnitBtn.addEventListener('click', cancelUnitEdit);
-            unitListManagement.addEventListener('click', (e) => {
+            uiElements.manageUnitsBtn.addEventListener('click', () => uiElements.unitManagementModal.classList.remove('hidden'));
+            uiElements.closeUnitModalBtn.addEventListener('click', () => uiElements.unitManagementModal.classList.add('hidden'));
+            uiElements.unitForm.addEventListener('submit', handleUnitFormSubmit);
+            uiElements.cancelEditUnitBtn.addEventListener('click', cancelUnitEdit);
+            uiElements.unitListManagement.addEventListener('click', (e) => {
                 if (e.target.classList.contains('delete-unit-btn')) {
                     handleDeleteUnit(e.target.dataset.id);
                 } else if (e.target.classList.contains('edit-unit-btn')) {
@@ -833,7 +928,7 @@
             });
 
             // Edit/Delete Listeners
-            receivingList.addEventListener('click', (e) => {
+            uiElements.receivingList.addEventListener('click', (e) => {
                 if (e.target.classList.contains('issue-btn')) {
                     openIssueModal(e);
                 } else if (e.target.classList.contains('edit-btn')) {
@@ -842,30 +937,46 @@
                     handleDeleteClick(e.target.dataset.id);
                 }
             });
-            editReceivingForm.addEventListener('submit', handleEditReceivingSubmit);
-            cancelEditReceivingBtn.addEventListener('click', () => editReceivingModal.classList.add('hidden'));
             
+            uiElements.issuingList.addEventListener('click', (e) => {
+                if (e.target.classList.contains('edit-issuing-btn')) {
+                    handleEditIssuingClick(e.target.dataset.id);
+                } else if (e.target.classList.contains('delete-issuing-btn')) {
+                    handleDeleteIssuingClick(e.target.dataset.id);
+                }
+            });
+            
+            uiElements.editReceivingForm.addEventListener('submit', handleEditReceivingSubmit);
+            uiElements.cancelEditReceivingBtn.addEventListener('click', () => uiElements.editReceivingModal.classList.add('hidden'));
+            
+            // Issuing Edit Modal Listeners
+            document.getElementById('edit-issuing-form').addEventListener('submit', handleEditIssuingSubmit);
+            document.getElementById('cancel-edit-issuing').addEventListener('click', () => document.getElementById('edit-issuing-modal').classList.add('hidden'));
+
             // Remark Edit Modal Listeners
-            editRemarksForm.addEventListener('submit', handleEditRemarksSubmit);
-            cancelEditRemarksBtn.addEventListener('click', () => editRemarksModal.classList.add('hidden'));
+            uiElements.editRemarksForm.addEventListener('submit', handleEditRemarksSubmit);
+            uiElements.cancelEditRemarksBtn.addEventListener('click', () => uiElements.editRemarksModal.classList.add('hidden'));
 
             // Existing Listeners
-            printBtn.addEventListener('click', () => window.print());
-            saveBtn.addEventListener('click', () => {
+            uiElements.printBtn.addEventListener('click', () => window.print());
+            uiElements.uploadBtn.addEventListener('click', () => uiElements.excelUploadInput.click());
+            uiElements.excelUploadInput.addEventListener('change', handleExcelUpload);
+            uiElements.saveBtn.addEventListener('click', () => {
                 currentAction.type = 'save';
-                passwordModal.classList.remove('hidden');
-                passwordInput.focus();
+                uiElements.passwordModal.classList.remove('hidden');
+                uiElements.passwordInput.focus();
             });
-            cancelPasswordBtn.addEventListener('click', closePasswordModal);
-            passwordForm.addEventListener('submit', handlePasswordSubmit);
-            receivingForm.addEventListener('submit', handleReceivingSubmit);
-            issuingForm.addEventListener('submit', handleIssuingSubmit);
-            inventoryList.addEventListener('click', (e) => handleDetailClick(e));
-            Object.values(searchInputs).forEach(input => input.addEventListener('input', processAndRenderAll));
+            uiElements.cancelPasswordBtn.addEventListener('click', closePasswordModal);
+            uiElements.passwordForm.addEventListener('submit', handlePasswordSubmit);
+            uiElements.receivingForm.addEventListener('submit', handleReceivingSubmit);
+            uiElements.issuingForm.addEventListener('submit', handleIssuingSubmit);
+            uiElements.inventoryList.addEventListener('click', (e) => handleDetailClick(e));
+            Object.values(uiElements.searchInputs).forEach(input => input.addEventListener('input', processAndRenderAll));
+            Object.values(uiElements.searchFilters).forEach(filter => filter.addEventListener('change', processAndRenderAll));
             document.querySelectorAll('.sortable').forEach(header => header.addEventListener('click', handleSortClick));
-            cancelIssueBtn.addEventListener('click', closeIssueModal);
-            closeDetailModalBtn.addEventListener('click', closeDetailModal);
-            closeRemarksModalBtn.addEventListener('click', closeRemarksModal);
+            uiElements.cancelIssueBtn.addEventListener('click', closeIssueModal);
+            uiElements.closeDetailModalBtn.addEventListener('click', closeDetailModal);
+            uiElements.closeRemarksModalBtn.addEventListener('click', closeRemarksModal);
             document.querySelectorAll('#app button[id^="tab-"]').forEach(tab => tab.addEventListener('click', handleTabClick));
             document.getElementById('content-area').addEventListener('click', (e) => {
                 if (e.target.classList.contains('edit-remark-btn')) {
@@ -893,8 +1004,8 @@
                 showNotification('데이터베이스에 연결되지 않아 저장할 수 없습니다.', true);
                 return;
             }
-            const id = unitIdInput.value;
-            const name = unitNameInput.value.trim();
+            const id = uiElements.unitIdInput.value;
+            const name = uiElements.unitNameInput.value.trim();
             if (!name) return;
 
             try {
@@ -914,20 +1025,20 @@
         }
 
         function cancelUnitEdit() {
-            unitIdInput.value = '';
-            unitNameInput.value = '';
-            submitUnitBtn.textContent = '추가';
-            submitUnitBtn.classList.replace('bg-green-600', 'bg-blue-600');
-            cancelEditUnitBtn.classList.add('hidden');
+            uiElements.unitIdInput.value = '';
+            uiElements.unitNameInput.value = '';
+            uiElements.submitUnitBtn.textContent = '추가';
+            uiElements.submitUnitBtn.classList.replace('bg-green-600', 'bg-blue-600');
+            uiElements.cancelEditUnitBtn.classList.add('hidden');
         }
 
         function handleEditUnit(id, name) {
-            unitIdInput.value = id;
-            unitNameInput.value = name;
-            submitUnitBtn.textContent = '수정';
-            submitUnitBtn.classList.replace('bg-blue-600', 'bg-green-600');
-            cancelEditUnitBtn.classList.remove('hidden');
-            unitNameInput.focus();
+            uiElements.unitIdInput.value = id;
+            uiElements.unitNameInput.value = name;
+            uiElements.submitUnitBtn.textContent = '수정';
+            uiElements.submitUnitBtn.classList.replace('bg-blue-600', 'bg-green-600');
+            uiElements.cancelEditUnitBtn.classList.remove('hidden');
+            uiElements.unitNameInput.focus();
         }
 
         async function handleDeleteUnit(id) {
@@ -949,29 +1060,47 @@
         
         function handleEditClick(id) {
             currentAction = { type: 'edit', id: id };
-            passwordModal.classList.remove('hidden');
-            passwordInput.focus();
+            uiElements.passwordModal.classList.remove('hidden');
+            uiElements.passwordInput.focus();
         }
 
         function handleDeleteClick(id) {
             currentAction = { type: 'delete', id: id };
-            passwordModal.classList.remove('hidden');
-            passwordInput.focus();
+            uiElements.passwordModal.classList.remove('hidden');
+            uiElements.passwordInput.focus();
+        }
+
+        function handleEditIssuingClick(id) {
+            currentAction = { type: 'edit-issuing', id: id };
+            uiElements.passwordModal.classList.remove('hidden');
+            uiElements.passwordInput.focus();
+        }
+
+        function handleDeleteIssuingClick(id) {
+            currentAction = { type: 'delete-issuing', id: id };
+            uiElements.passwordModal.classList.remove('hidden');
+            uiElements.passwordInput.focus();
         }
 
         function handlePasswordSubmit(e) {
             e.preventDefault();
-            if (passwordInput.value === '0000') {
+            if (uiElements.passwordInput.value === '0000') {
                 if (currentAction.type === 'edit') {
                     openEditModal(currentAction.id);
                 } else if (currentAction.type === 'delete') {
                     performDelete(currentAction.id);
+                } else if (currentAction.type === 'edit-issuing') {
+                    openEditIssuingModal(currentAction.id);
+                } else if (currentAction.type === 'delete-issuing') {
+                    performDeleteIssuing(currentAction.id);
                 } else if (currentAction.type === 'save') {
                     generateAndDownloadExcel();
+                } else if (currentAction.type === 'upload') {
+                    processExcelUpload(currentAction.fileInput.files[0]);
                 }
                 closePasswordModal();
             } else {
-                passwordError.classList.remove('hidden');
+                uiElements.passwordError.classList.remove('hidden');
             }
         }
 
@@ -979,68 +1108,146 @@
             const item = globalReceivingData.find(d => d.id === id);
             if (!item) return;
 
-            document.getElementById('edit-receiving-id').value = id;
-            document.getElementById('edit-receive-date').value = item.date;
-            document.getElementById('edit-receive-material-name').value = item.materialName;
-            document.getElementById('edit-receive-material-code').value = item.materialCode;
-            document.getElementById('edit-receive-test-no').value = item.testNo;
-            document.getElementById('edit-receive-quantity').value = formatNumber(item.quantity);
-            document.getElementById('edit-receive-unit').value = item.unit;
-            document.getElementById('edit-receive-supplier').value = item.supplier;
-            document.getElementById('edit-receive-expiry-date').value = item.expiryDate;
-            document.getElementById('edit-receive-remarks').value = item.remarks;
+            const form = uiElements.editReceivingForm;
+            form.querySelector('#edit-receiving-id').value = id;
+            form.querySelector('#edit-receive-date').value = item.date;
+            form.querySelector('#edit-receive-material-name').value = item.materialName;
+            form.querySelector('#edit-receive-material-code').value = item.materialCode;
+            form.querySelector('#edit-receive-test-no').value = item.testNo;
+            form.querySelector('#edit-receive-quantity').value = item.quantity;
+            form.querySelector('#edit-receive-supplier').value = item.supplier;
+            form.querySelector('#edit-receive-expiry-date').value = item.expiryDate;
+            form.querySelector('#edit-receive-remarks').value = item.remarks || '';
             
-            const sgInput = document.getElementById('edit-receive-specific-gravity');
-            const unitSelect = document.getElementById('edit-receive-unit');
-            toggleSpecificGravityInput(unitSelect, sgInput);
-            if ((item.unit || '').toLowerCase() === 'l' || (item.unit || '').toLowerCase() === 'ml') {
-                sgInput.value = item.specificGravity;
+            const unitSelect = form.querySelector('#edit-receive-unit');
+            unitSelect.value = item.unit || '';
+            
+            const sgInput = form.querySelector('#edit-receive-specific-gravity');
+            if (item.unit && (item.unit.toLowerCase() === 'l' || item.unit.toLowerCase() === 'ml')) {
+                sgInput.classList.remove('hidden');
+                sgInput.value = item.specificGravity || '';
+            } else {
+                sgInput.classList.add('hidden');
             }
 
-            editReceivingModal.classList.remove('hidden');
+            uiElements.editReceivingModal.classList.remove('hidden');
         }
 
         async function handleEditReceivingSubmit(e) {
             e.preventDefault();
-            const id = document.getElementById('edit-receiving-id').value;
-            const unit = document.getElementById('edit-receive-unit').value;
-            const specificGravity = (unit.toLowerCase() === 'l' || unit.toLowerCase() === 'ml')
-                ? parseFloat(document.getElementById('edit-receive-specific-gravity').value) || 1
-                : 1;
+            if (!isDbReady) return;
 
-            const updatedData = {
-                date: document.getElementById('edit-receive-date').value,
-                materialName: document.getElementById('edit-receive-material-name').value,
-                materialCode: document.getElementById('edit-receive-material-code').value,
-                testNo: document.getElementById('edit-receive-test-no').value,
-                quantity: parseFormattedNumber(document.getElementById('edit-receive-quantity').value),
-                unit: unit,
-                specificGravity: specificGravity,
-                supplier: document.getElementById('edit-receive-supplier').value,
-                expiryDate: document.getElementById('edit-receive-expiry-date').value,
-                remarks: document.getElementById('edit-receive-remarks').value,
-            };
+            const form = e.target;
+            const id = form.querySelector('#edit-receiving-id').value;
+            const docRef = doc(receivingCollection, id);
+            
+            const quantity = parseFormattedNumber(form.querySelector('#edit-receive-quantity').value);
+            const unit = form.querySelector('#edit-receive-unit').value;
+            const specificGravity = form.querySelector('#edit-receive-specific-gravity').value;
 
             try {
-                const docRef = doc(receivingCollection, id);
-                await updateDoc(docRef, updatedData);
-                editReceivingModal.classList.add('hidden');
+                await updateDoc(docRef, {
+                    date: form.querySelector('#edit-receive-date').value,
+                    materialName: form.querySelector('#edit-receive-material-name').value,
+                    materialCode: form.querySelector('#edit-receive-material-code').value,
+                    testNo: form.querySelector('#edit-receive-test-no').value,
+                    quantity: quantity,
+                    unit: unit,
+                    specificGravity: (unit.toLowerCase() === 'l' || unit.toLowerCase() === 'ml') ? specificGravity : '',
+                    supplier: form.querySelector('#edit-receive-supplier').value,
+                    expiryDate: form.querySelector('#edit-receive-expiry-date').value,
+                    remarks: form.querySelector('#edit-receive-remarks').value,
+                    updatedAt: new Date()
+                });
                 showNotification('입고 내역이 수정되었습니다.');
+                uiElements.editReceivingModal.classList.add('hidden');
             } catch (error) {
-                console.error("Error updating document:", error);
+                console.error("Error updating document: ", error);
                 showNotification('수정에 실패했습니다.', true);
             }
         }
 
         async function performDelete(id) {
-            if (confirm('정말로 이 입고 내역을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+            if (confirm('정말로 이 입고 내역을 삭제하시겠습니까? 연관된 출고 내역이 있으면 삭제할 수 없습니다.')) {
+                if (!isDbReady) {
+                    showNotification('데이터베이스에 연결되지 않았습니다.', true);
+                    return;
+                }
+                // Check if any issuing record is associated with this receiving record
+                if (globalIssuingData.some(issue => issue.receivingId === id)) {
+                    showNotification('이 입고와 연관된 출고 내역이 있어 삭제할 수 없습니다.', true);
+                    return;
+                }
                 try {
-                    const docRef = doc(receivingCollection, id);
-                    await deleteDoc(docRef);
+                    await deleteDoc(doc(receivingCollection, id));
                     showNotification('입고 내역이 삭제되었습니다.');
                 } catch (error) {
-                    console.error("Error deleting document:", error);
+                    console.error("Error deleting document: ", error);
                     showNotification('삭제에 실패했습니다.', true);
+                }
+            }
+        }
+        
+        function openEditIssuingModal(id) {
+            const item = globalIssuingData.find(d => d.id === id);
+            if (!item) return;
+
+            const modal = document.getElementById('edit-issuing-modal');
+            const form = document.getElementById('edit-issuing-form');
+            
+            form.querySelector('#edit-issuing-id').value = id;
+            form.querySelector('#edit-issue-date').value = item.date;
+            form.querySelector('#edit-issue-quantity').value = item.quantity;
+            form.querySelector('#edit-issue-unit').value = item.unit || '';
+            form.querySelector('#edit-issue-test-no').value = item.testNo;
+            form.querySelector('#edit-issue-product-name').value = item.productName || '';
+            form.querySelector('#edit-issue-mfg-no').value = item.mfgNo || '';
+            form.querySelector('#edit-issue-remarks').value = item.remarks || '';
+
+            modal.classList.remove('hidden');
+        }
+
+        async function handleEditIssuingSubmit(e) {
+            e.preventDefault();
+            if (!isDbReady) return;
+
+            const form = e.target;
+            const id = form.querySelector('#edit-issuing-id').value;
+            const docRef = doc(issuingCollection, id);
+            
+            const quantity = parseFormattedNumber(form.querySelector('#edit-issue-quantity').value);
+
+            try {
+                await updateDoc(docRef, {
+                    date: form.querySelector('#edit-issue-date').value,
+                    quantity: quantity,
+                    unit: form.querySelector('#edit-issue-unit').value,
+                    testNo: form.querySelector('#edit-issue-test-no').value,
+                    productName: form.querySelector('#edit-issue-product-name').value,
+                    mfgNo: form.querySelector('#edit-issue-mfg-no').value,
+                    remarks: form.querySelector('#edit-issue-remarks').value,
+                    updatedAt: new Date()
+                });
+                showNotification('출고 내역이 수정되었습니다.');
+                document.getElementById('edit-issuing-modal').classList.add('hidden');
+            } catch (error) {
+                console.error("Error updating issuing document: ", error);
+                showNotification('출고 내역 수정에 실패했습니다.', true);
+            }
+        }
+
+        async function performDeleteIssuing(id) {
+            if (confirm('정말로 이 출고 내역을 삭제하시겠습니까?')) {
+                if (!isDbReady) {
+                    showNotification('데이터베이스에 연결되지 않았습니다.', true);
+                    return;
+                }
+                try {
+                    await deleteDoc(doc(issuingCollection, id));
+                    showNotification('출고 내역이 삭제되었습니다.');
+                } catch (error) {
+                    console.error("Error deleting issuing document: ", error);
+                    showNotification('출고 내역 삭제에 실패했습니다.', true);
                 }
             }
         }
@@ -1048,199 +1255,462 @@
 
         function handleSortClick(e) {
             const header = e.currentTarget;
-            const sortKey = header.closest('div[id$="-content"]').id.replace('-content', '');
             const key = header.dataset.sort;
-            document.querySelectorAll(`#${sortKey}-content .sortable`).forEach(h => { if (h !== header) h.className = 'table-cell sortable'; });
-            if (sortState[sortKey]?.key === key && sortState[sortKey]?.direction === 'asc') { sortState[sortKey].direction = 'desc'; header.className = 'table-cell sortable desc'; } else { sortState[sortKey] = { key, direction: 'asc' }; header.className = 'table-cell sortable asc'; }
+            const tableId = header.closest('table').parentElement.parentElement.id.replace('-content', '');
+            
+            if (!sortState[tableId]) {
+                sortState[tableId] = { key: null, direction: 'asc' };
+            }
+
+            if (sortState[tableId].key === key) {
+                sortState[tableId].direction = sortState[tableId].direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState[tableId].key = key;
+                sortState[tableId].direction = 'asc';
+            }
+
+            document.querySelectorAll(`#${tableId}-content .sortable`).forEach(th => {
+                th.classList.remove('asc', 'desc');
+            });
+            header.classList.add(sortState[tableId].direction);
+            
             processAndRenderAll();
         }
 
         function handleTabClick(e) {
-            const tabId = e.target.id;
-            const contentId = tabId.replace('tab-', '') + '-content';
-            document.querySelectorAll('#app button[id^="tab-"]').forEach(t => {
-                t.classList.remove('text-blue-600', 'border-blue-600', 'bg-white');
-                t.classList.add('text-gray-500');
+            const clickedTab = e.target;
+            const tabId = clickedTab.id; // e.g., "tab-inventory"
+            const contentId = tabId.replace('tab-', '') + '-content'; // e.g., "inventory-content"
+
+            // Reset all tabs
+            document.querySelectorAll('#app button[id^="tab-"]').forEach(tab => {
+                tab.classList.remove('bg-white', 'text-blue-600', 'border-b-2', 'border-blue-600');
+                tab.classList.add('text-gray-500', 'hover:text-blue-600');
             });
-            e.target.classList.add('text-blue-600', 'border-blue-600', 'bg-white');
-            e.target.classList.remove('text-gray-500');
-            document.querySelectorAll('#content-area > div').forEach(c => c.classList.add('hidden'));
-            document.getElementById(contentId).classList.remove('hidden');
+
+            // Reset all content areas
+            document.querySelectorAll('#content-area > div').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            // Activate clicked tab
+            clickedTab.classList.add('bg-white', 'text-blue-600', 'border-b-2', 'border-blue-600');
+            clickedTab.classList.remove('text-gray-500', 'hover:text-blue-600');
+
+            // Show corresponding content
+            const contentToShow = document.getElementById(contentId);
+            if (contentToShow) {
+                contentToShow.classList.remove('hidden');
+            }
         }
 
         async function handleReceivingSubmit(e) {
             e.preventDefault();
-            if (!isDbReady || !userId) {
+            if (!isDbReady) {
                 showNotification('데이터베이스에 연결되지 않아 저장할 수 없습니다.', true);
                 return;
             }
-            const unit = receiveUnitSelect.value;
-            const specificGravity = (unit.toLowerCase() === 'l' || unit.toLowerCase() === 'ml')
-                ? parseFloat(receiveSpecificGravityInput.value) || 1
-                : 1;
-            const newReceiving = { date: document.getElementById('receive-date').value, materialName: document.getElementById('receive-material-name').value, materialCode: document.getElementById('receive-material-code').value, testNo: document.getElementById('receive-test-no').value, quantity: parseFormattedNumber(receiveQuantityInput.value), unit: unit, specificGravity: specificGravity, supplier: document.getElementById('receive-supplier').value, expiryDate: document.getElementById('receive-expiry-date').value, remarks: document.getElementById('receive-remarks').value, createdAt: new Date(), };
+            const form = e.target;
+            const quantity = parseFormattedNumber(form.querySelector('#receive-quantity').value);
+            const unit = form.querySelector('#receive-unit').value;
+            const specificGravity = form.querySelector('#receive-specific-gravity').value;
+
+            const newReceiving = {
+                date: form.querySelector('#receive-date').value,
+                materialName: form.querySelector('#receive-material-name').value,
+                materialCode: form.querySelector('#receive-material-code').value,
+                testNo: form.querySelector('#receive-test-no').value,
+                quantity: quantity,
+                unit: unit,
+                specificGravity: (unit.toLowerCase() === 'l' || unit.toLowerCase() === 'ml') ? specificGravity : '',
+                supplier: form.querySelector('#receive-supplier').value,
+                expiryDate: form.querySelector('#receive-expiry-date').value,
+                remarks: form.querySelector('#receive-remarks').value,
+                createdAt: new Date()
+            };
+
             try {
                 await addDoc(receivingCollection, newReceiving);
-                receivingForm.reset();
-                toggleSpecificGravityInput(); // Reset the visibility after submission
-                showNotification('입고 정보가 성공적으로 저장되었습니다.');
-            } catch (error) { console.error("Error adding document: ", error); showNotification('저장에 실패했습니다.', true); }
+                showNotification('입고 등록이 완료되었습니다.');
+                form.reset();
+                toggleSpecificGravityInput(); // Reset SG input visibility
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                showNotification('입고 등록에 실패했습니다.', true);
+            }
         }
+
         async function handleIssuingSubmit(e) {
             e.preventDefault();
-            if (!isDbReady || !userId) {
+            if (!isDbReady) {
                 showNotification('데이터베이스에 연결되지 않아 저장할 수 없습니다.', true);
                 return;
             }
-            const receivingId = document.getElementById('issue-receiving-id').value;
-            const issueQuantity = parseFormattedNumber(issueQuantityInput.value);
-            const batchStock = parseFormattedNumber(document.getElementById('issue-modal-batch-stock').dataset.rawStock);
-            if (issueQuantity > batchStock) {
-                showNotification('출고량이 해당 배치의 재고보다 많을 수 없습니다.', true);
-                return;
-            }
-            const receivingDocRef = doc(db, `artifacts/${appId}/users/${userId}/receiving`, receivingId);
-            const receivingDocSnap = await getDoc(receivingDocRef);
-            if (!receivingDocSnap.exists()) {
+            const form = e.target;
+            const receivingId = form.querySelector('#issue-receiving-id').value;
+            const quantity = parseFormattedNumber(form.querySelector('#issue-quantity').value);
+            
+            const receivingDoc = globalReceivingData.find(r => r.id === receivingId);
+            if (!receivingDoc) {
                 showNotification('출고할 입고 정보를 찾을 수 없습니다.', true);
                 return;
             }
-            const receivingData = receivingDocSnap.data();
-            const newIssuing = { date: document.getElementById('issue-date').value, quantity: issueQuantity, unit: document.getElementById('issue-unit').value, testNo: document.getElementById('issue-test-no').value, productName: document.getElementById('issue-product-name').value, mfgNo: document.getElementById('issue-mfg-no').value, remarks: document.getElementById('issue-remarks').value, receivingId: receivingId, materialName: receivingData.materialName, materialCode: receivingData.materialCode, createdAt: new Date(), };
+
+            const newIssuing = {
+                receivingId: receivingId,
+                date: form.querySelector('#issue-date').value,
+                quantity: quantity,
+                unit: form.querySelector('#issue-unit').value,
+                materialName: receivingDoc.materialName,
+                materialCode: receivingDoc.materialCode,
+                testNo: form.querySelector('#issue-test-no').value,
+                productName: form.querySelector('#issue-product-name').value,
+                mfgNo: form.querySelector('#issue-mfg-no').value,
+                remarks: form.querySelector('#issue-remarks').value,
+                createdAt: new Date()
+            };
+
             try {
                 await addDoc(issuingCollection, newIssuing);
+                showNotification('출고 처리가 완료되었습니다.');
                 closeIssueModal();
-                showNotification('출고 처리되었습니다.');
-            } catch (error) { console.error("Error adding document: ", error); showNotification('출고 처리에 실패했습니다.', true); }
-        }
-        
-        function handleDetailClick(e) {
-            const row = e.target.closest('tr');
-            if (e.target.classList.contains('remarks-cell') || e.target.classList.contains('converted-value') || e.target.closest('.no-print-col')) return; 
-            if (!row || !row.dataset.name) return;
-            openDetailModal(row.dataset.name, row.dataset.code);
+            } catch (error) {
+                console.error("Error adding issuing document: ", error);
+                showNotification('출고 처리에 실패했습니다.', true);
+            }
         }
 
-        // --- Modal Control ---
-        function closePasswordModal() { passwordModal.classList.add('hidden'); passwordInput.value = ''; passwordError.classList.add('hidden'); currentAction = { type: null, id: null }; }
-        function openIssueModal(e) {
-            e.stopPropagation();
-            const button = e.target;
-            const batchStockElement = document.getElementById('issue-modal-batch-stock');
-            batchStockElement.textContent = `${formatNumber(button.dataset.stock)} ${button.dataset.unit || ''}`;
-            batchStockElement.dataset.rawStock = button.dataset.stock;
-            document.getElementById('issue-receiving-id').value = button.dataset.id;
-            document.getElementById('issue-modal-material-name').textContent = button.dataset.name;
-            document.getElementById('issue-modal-material-code').textContent = button.dataset.code;
-            issueQuantityInput.max = button.dataset.stock;
-            document.getElementById('issue-date').valueAsDate = new Date();
-            issueUnitSelect.value = button.dataset.unit || (globalUnitsData.length > 0 ? globalUnitsData[0].name : '');
-            issueModal.classList.remove('hidden');
-        }
-        function closeIssueModal() { issuingForm.reset(); issueQuantityInput.value = ''; issueModal.classList.add('hidden'); }
-        function openDetailModal(materialName, materialCode) {
-            document.getElementById('detail-modal-title').textContent = `[${materialName} (${materialCode})] 상세 내역`;
-            const filteredReceiving = globalReceivingData.filter(item => item.materialName === materialName && item.materialCode === materialCode).sort((a,b) => b.date.localeCompare(a.date));
-            const filteredIssuing = globalIssuingData.filter(item => item.materialName === materialName && item.materialCode === materialCode).sort((a,b) => b.date.localeCompare(a.date));
-            const detailReceivingList = document.getElementById('detail-receiving-list');
-            detailReceivingList.innerHTML = '';
-            filteredReceiving.forEach(item => { const row = detailReceivingList.insertRow(); row.className = 'border-b'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell">${item.testNo}</td>${createQuantityCell(item.quantity, item.unit, item.specificGravity)}<td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell remarks-cell" data-full-remarks="${item.remarks || ''}">${(item.remarks || '').substring(0,15)}...</td>`; });
-            const detailIssuingList = document.getElementById('detail-issuing-list');
-            detailIssuingList.innerHTML = '';
-            filteredIssuing.forEach(item => { 
-                const receivingDoc = globalReceivingData.find(r => r.id === item.receivingId);
-                const sg = receivingDoc ? receivingDoc.specificGravity : 1;
-                const row = detailIssuingList.insertRow(); row.className = 'border-b'; row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell">${item.testNo}</td>${createQuantityCell(item.quantity, item.unit, sg)}<td class="table-cell">${item.productName}</td><td class="table-cell">${item.mfgNo}</td><td class="table-cell remarks-cell" data-full-remarks="${item.remarks || ''}">${(item.remarks || '').substring(0,15)}...</td>`; });
-            detailModal.classList.remove('hidden');
-        }
-        function closeDetailModal() { detailModal.classList.add('hidden'); }
-        function openRemarksModal(text) { remarksModalContent.textContent = text; remarksModal.classList.remove('hidden'); }
-        function closeRemarksModal() { remarksModal.classList.add('hidden'); }
-        async function handleEditRemarkClick(docId) {
-            const docRef = doc(receivingCollection, docId);
-            const docSnap = await getDoc(docRef);
-            if (!docSnap.exists()) {
-                showNotification('해당 데이터를 찾을 수 없습니다.', true);
-                return;
+        function handleDetailClick(e) {
+            if (e.target.closest('.remarks-cell') || e.target.closest('.edit-remark-btn')) {
+                return; // Don't open detail modal if clicking on remarks
             }
-            const currentRemark = docSnap.data().remarks || '';
-            document.getElementById('edit-remarks-doc-id').value = docId;
-            document.getElementById('edit-remarks-textarea').value = currentRemark;
-            editRemarksModal.classList.remove('hidden');
+            const row = e.target.closest('tr');
+            if (row && row.dataset.name && row.dataset.code) {
+                openDetailModal(row.dataset.name, row.dataset.code);
+            }
         }
-        
+
+        function closePasswordModal() {
+            uiElements.passwordInput.value = '';
+            uiElements.passwordError.classList.add('hidden');
+            uiElements.passwordModal.classList.add('hidden');
+            currentAction = { type: null, id: null };
+        }
+
+        function openIssueModal(e) {
+            const button = e.target;
+            const id = button.dataset.id;
+            const name = button.dataset.name;
+            const code = button.dataset.code;
+            const stock = button.dataset.stock;
+            const unit = button.dataset.unit;
+
+            document.getElementById('issue-receiving-id').value = id;
+            document.getElementById('issue-modal-material-name').textContent = name;
+            document.getElementById('issue-modal-material-code').textContent = code;
+            document.getElementById('issue-modal-batch-stock').textContent = `${formatNumber(stock)} ${unit}`;
+            document.getElementById('issue-date').valueAsDate = new Date();
+            document.getElementById('issue-unit').value = unit;
+            
+            const receivingDoc = globalReceivingData.find(r => r.id === id);
+            if(receivingDoc) {
+                document.getElementById('issue-test-no').value = receivingDoc.testNo;
+            }
+
+            uiElements.issueModal.classList.remove('hidden');
+        }
+
+        function closeIssueModal() {
+            uiElements.issuingForm.reset();
+            uiElements.issueModal.classList.add('hidden');
+        }
+
+        function openDetailModal(materialName, materialCode) {
+            document.getElementById('detail-modal-title').textContent = `[${materialName}] 상세 내역`;
+            
+            const receivingBody = document.getElementById('detail-receiving-list');
+            const issuingBody = document.getElementById('detail-issuing-list');
+            receivingBody.innerHTML = '';
+            issuingBody.innerHTML = '';
+
+            const relevantReceiving = globalReceivingData.filter(r => r.materialName === materialName && r.materialCode === materialCode);
+            const receivingIds = relevantReceiving.map(r => r.id);
+            const relevantIssuing = globalIssuingData.filter(i => receivingIds.includes(i.receivingId));
+
+            relevantReceiving.forEach(r => {
+                const row = receivingBody.insertRow();
+                row.innerHTML = `
+                    <td class="table-cell">${r.date}</td>
+                    <td class="table-cell">${r.testNo}</td>
+                    <td class="table-cell">${formatNumber(r.quantity)} ${r.unit}</td>
+                    <td class="table-cell">${r.supplier}</td>
+                    <td class="table-cell">${r.expiryDate}</td>
+                    <td class="table-cell">${r.remarks || ''}</td>
+                `;
+            });
+
+            relevantIssuing.forEach(i => {
+                const row = issuingBody.insertRow();
+                row.innerHTML = `
+                    <td class="table-cell">${i.date}</td>
+                    <td class="table-cell">${i.testNo}</td>
+                    <td class="table-cell">${formatNumber(i.quantity)} ${i.unit}</td>
+                    <td class="table-cell">${i.productName}</td>
+                    <td class="table-cell">${i.mfgNo}</td>
+                    <td class="table-cell">${i.remarks || ''}</td>
+                `;
+            });
+
+            uiElements.detailModal.classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            uiElements.detailModal.classList.add('hidden');
+        }
+
+        function openRemarksModal(text) {
+            uiElements.remarksModalContent.textContent = text;
+            uiElements.remarksModal.classList.remove('hidden');
+        }
+
+        function closeRemarksModal() {
+            uiElements.remarksModal.classList.add('hidden');
+        }
+
+        async function handleEditRemarkClick(docId) {
+            const item = globalReceivingData.find(d => d.id === docId);
+            if (!item) return;
+            
+            document.getElementById('edit-remarks-doc-id').value = docId;
+            document.getElementById('edit-remarks-textarea').value = item.remarks || '';
+            uiElements.editRemarksModal.classList.remove('hidden');
+        }
+
         async function handleEditRemarksSubmit(e) {
             e.preventDefault();
+            if (!isDbReady) return;
+
             const docId = document.getElementById('edit-remarks-doc-id').value;
-            const newRemark = document.getElementById('edit-remarks-textarea').value;
-            
-            if (!docId) {
-                showNotification('오류: 문서 ID를 찾을 수 없습니다.', true);
-                return;
-            }
+            const newRemarks = document.getElementById('edit-remarks-textarea').value;
+            const docRef = doc(receivingCollection, docId);
 
             try {
-                const docRef = doc(receivingCollection, docId);
-                await updateDoc(docRef, { remarks: newRemark });
-                editRemarksModal.classList.add('hidden');
+                await updateDoc(docRef, { 
+                    remarks: newRemarks,
+                    updatedAt: new Date()
+                });
                 showNotification('비고가 수정되었습니다.');
+                uiElements.editRemarksModal.classList.add('hidden');
             } catch (error) {
-                console.error("Error updating remark:", error);
+                console.error("Error updating remarks: ", error);
                 showNotification('비고 수정에 실패했습니다.', true);
             }
         }
 
-        // --- Excel Export Function ---
-        function generateAndDownloadExcel() {
-             const inventory = {};
-            [...globalReceivingData, ...globalIssuingData].forEach(item => {
-                const key = `${item.materialName}_${item.materialCode}`;
-                if (!inventory[key]) {
-                    inventory[key] = { name: item.materialName, code: item.materialCode, stock: {} };
-                }
-                const unit = item.unit || 'N/A';
-                if (!inventory[key].stock[unit]) {
-                    inventory[key].stock[unit] = { received: 0, issued: 0 };
-                }
-                const quantity = parseFormattedNumber(item.quantity);
-                if (item.createdAt) {
-                     if (item.supplier !== undefined) {
-                        inventory[key].stock[unit].received += quantity;
-                    } else {
-                        inventory[key].stock[unit].issued += quantity;
-                    }
-                }
-            });
-            const inventoryData = Object.values(inventory).map(item => {
-                const stockStrings = Object.entries(item.stock).map(([unit, values]) => `${values.received - values.issued} ${unit}`).join(', ');
-                 const materialReceivingBatches = globalReceivingData.filter(r => r.materialName === item.name && r.materialCode === item.code);
-                let totalConvertedKg = 0;
-                materialReceivingBatches.forEach(batch => {
-                    const issuedQtyForThisBatch = globalIssuingData.filter(issue => issue.receivingId === batch.id).reduce((sum, issue) => sum + parseFormattedNumber(issue.quantity), 0);
-                    const remainingQty = parseFormattedNumber(batch.quantity) - issuedQtyForThisBatch;
-                    const sg = batch.specificGravity || 1;
-                    const unit = (batch.unit || '').toLowerCase();
-                    let convertedQty = 0;
-                    if (unit === 'kg') { convertedQty = remainingQty; } else if (unit === 'g') { convertedQty = remainingQty / 1000; } else if (unit === 'l') { convertedQty = remainingQty * sg; } else if (unit === 'ml') { convertedQty = (remainingQty * sg) / 1000; }
-                    totalConvertedKg += convertedQty;
-                });
-                return { '원료명': item.name, '원료 코드': item.code, '현재고': stockStrings, '환산 재고 (KG)': totalConvertedKg.toFixed(2) };
-            });
+        function handleExcelUpload(event) {
+            const fileInput = event.target;
+            if (fileInput.files.length > 0) {
+                currentAction = { type: 'upload', fileInput: fileInput };
+                uiElements.passwordModal.classList.remove('hidden');
+                uiElements.passwordInput.focus();
+            }
+        }
 
-            const issuedQtys = {};
-            globalIssuingData.forEach(issue => { issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + parseFormattedNumber(issue.quantity); });
-            const receivingData = globalReceivingData.map(item => { const remainingStock = parseFormattedNumber(item.quantity) - (issuedQtys[item.id] || 0); const expiryDate = new Date(item.expiryDate); const today = new Date(); today.setHours(0, 0, 0, 0); const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)); return { '입고일': item.date, '원료명': item.materialName, '원료 코드': item.materialCode, '시험번호': item.testNo, '입고량': `${item.quantity} ${item.unit || ''}`, '남은 재고': `${remainingStock} ${item.unit || ''}`, '업체명': item.supplier, '유통기한': item.expiryDate, '잔여일': remainingDays >= 0 ? `${remainingDays}일` : '만료', '비고': item.remarks }; });
-            const issuingData = globalIssuingData.map(item => ({ '출고일': item.date, '원료명': item.materialName, '원료 코드': item.materialCode, '시험번호': item.testNo, '출고량': `${item.quantity} ${item.unit || ''}`, '제품명': item.productName, '제조번호': item.mfgNo, '비고': item.remarks }));
+        async function processExcelUpload(file) {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+
+                    const receivingSheet = workbook.Sheets['입고내역'];
+                    const issuingSheet = workbook.Sheets['출고내역'];
+
+                    if (!receivingSheet) {
+                        throw new Error("'입고내역' 시트를 찾을 수 없습니다.");
+                    }
+
+                    const receivingData = XLSX.utils.sheet_to_json(receivingSheet);
+                    const issuingData = issuingSheet ? XLSX.utils.sheet_to_json(issuingSheet) : [];
+                    
+                    if (confirm('엑셀 파일의 데이터로 전체 데이터를 덮어쓰시겠습니까? 기존의 모든 데이터가 삭제됩니다.')) {
+                        await clearAndUploadData(receivingData, issuingData);
+                    }
+
+                } catch (error) {
+                    console.error('Excel processing error:', error);
+                    showNotification(`엑셀 처리 중 오류 발생: ${error.message}`, true);
+                } finally {
+                    // Clear the file input so the same file can be selected again
+                    uiElements.excelUploadInput.value = '';
+                }
+            };
+            reader.onerror = (error) => {
+                console.error('File reading error:', error);
+                showNotification('파일을 읽는 중 오류가 발생했습니다.', true);
+                uiElements.excelUploadInput.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function clearAndUploadData(receivingData, issuingData) {
+            if (!isDbReady) {
+                showNotification('데이터베이스에 연결되지 않았습니다.', true);
+                return;
+            }
+            showNotification('기존 데이터 삭제 중...');
             
-            const wb = XLSX.utils.book_new();
-            const ws1 = XLSX.utils.json_to_sheet(inventoryData);
-            const ws2 = XLSX.utils.json_to_sheet(receivingData);
-            const ws3 = XLSX.utils.json_to_sheet(issuingData);
-            XLSX.utils.book_append_sheet(wb, ws1, "실시간 재고 현황");
-            XLSX.utils.book_append_sheet(wb, ws2, "입고 내역");
-            XLSX.utils.book_append_sheet(wb, ws3, "출고 내역");
-            const todayStr = new Date().toISOString().slice(0, 10);
-            XLSX.writeFile(wb, `원료수불대장_${todayStr}.xlsx`);
+            const batch = writeBatch(db);
+
+            // Delete all existing documents
+            const existingReceiving = await getDocs(receivingCollection);
+            existingReceiving.forEach(doc => batch.delete(doc.ref));
+            
+            const existingIssuing = await getDocs(issuingCollection);
+            existingIssuing.forEach(doc => batch.delete(doc.ref));
+
+            await batch.commit();
+            showNotification('기존 데이터 삭제 완료. 새 데이터 업로드 중...');
+
+            // Upload new data
+            const uploadBatch = writeBatch(db);
+            const receivingMap = new Map(); // To map old ID to new doc ref
+
+            for (const item of receivingData) {
+                const newReceivingDoc = {
+                    date: item['입고일'],
+                    materialName: item['원료명'],
+                    materialCode: item['원료 코드'],
+                    testNo: item['시험번호'],
+                    quantity: item['입고량'],
+                    unit: item['단위'],
+                    specificGravity: item['비중'] || '',
+                    supplier: item['업체명'],
+                    expiryDate: item['유통기한'],
+                    remarks: item['비고'] || '',
+                    createdAt: new Date()
+                };
+                const newDocRef = doc(receivingCollection);
+                uploadBatch.set(newDocRef, newReceivingDoc);
+                receivingMap.set(item['ID'], newDocRef.id); // Store mapping from Excel ID to new Firestore ID
+            }
+
+            for (const item of issuingData) {
+                const newReceivingId = receivingMap.get(item['입고 ID']);
+                if (!newReceivingId) {
+                    console.warn(`Could not find matching receiving ID for issuing item:`, item);
+                    continue; // Skip if no matching receiving doc
+                }
+                const newIssuingDoc = {
+                    receivingId: newReceivingId,
+                    date: item['출고일'],
+                    quantity: item['출고량'],
+                    unit: item['단위'],
+                    materialName: item['원료명'],
+                    materialCode: item['원료 코드'],
+                    testNo: item['시험번호'],
+                    productName: item['제품명'],
+                    mfgNo: item['제조번호'],
+                    remarks: item['비고'] || '',
+                    createdAt: new Date()
+                };
+                uploadBatch.set(doc(issuingCollection), newIssuingDoc);
+            }
+
+            await uploadBatch.commit();
+            showNotification('엑셀 데이터 업로드가 완료되었습니다.');
+        }
+
+        function generateAndDownloadExcel() {
+            try {
+                const wb = XLSX.utils.book_new();
+
+                // Prepare receiving data with remaining stock
+                const issuedQtys = {};
+                globalIssuingData.forEach(issue => {
+                    issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + parseFormattedNumber(issue.quantity);
+                });
+                const receivingExportData = globalReceivingData.map(item => ({
+                    'ID': item.id,
+                    '입고일': item.date,
+                    '원료명': item.materialName,
+                    '원료 코드': item.materialCode,
+                    '시험번호': item.testNo,
+                    '입고량': parseFormattedNumber(item.quantity),
+                    '단위': item.unit,
+                    '비중': item.specificGravity || '',
+                    '남은 재고': parseFormattedNumber(item.quantity) - (issuedQtys[item.id] || 0),
+                    '업체명': item.supplier,
+                    '유통기한': item.expiryDate,
+                    '비고': item.remarks || ''
+                }));
+
+                // Prepare issuing data
+                const issuingExportData = globalIssuingData.map(item => ({
+                    'ID': item.id,
+                    '입고 ID': item.receivingId,
+                    '출고일': item.date,
+                    '원료명': item.materialName,
+                    '원료 코드': item.materialCode,
+                    '시험번호': item.testNo,
+                    '출고량': parseFormattedNumber(item.quantity),
+                    '단위': item.unit,
+                    '제품명': item.productName,
+                    '제조번호': item.mfgNo,
+                    '비고': item.remarks || ''
+                }));
+                
+                // Prepare inventory data
+                const inventory = {};
+                 globalReceivingData.forEach(item => {
+                    const key = `${item.materialName}_${item.materialCode}`;
+                    if (!inventory[key]) {
+                        inventory[key] = { name: item.materialName, code: item.materialCode, batches: [] };
+                    }
+                    const remainingStock = parseFormattedNumber(item.quantity) - (issuedQtys[item.id] || 0);
+                    if (remainingStock > 0) {
+                        inventory[key].batches.push({ ...item, remainingStock });
+                    }
+                });
+                const inventoryExportData = Object.values(inventory).map(item => {
+                    const stockByUnit = {};
+                    let earliestExpiryDate = null;
+                    item.batches.forEach(batch => {
+                        const unit = batch.unit || 'N/A';
+                        if (!stockByUnit[unit]) stockByUnit[unit] = 0;
+                        stockByUnit[unit] += batch.remainingStock;
+                        if (!earliestExpiryDate || new Date(batch.expiryDate) < new Date(earliestExpiryDate)) {
+                            earliestExpiryDate = batch.expiryDate;
+                        }
+                    });
+                    const stockStrings = Object.entries(stockByUnit).map(([unit, qty]) => `${formatNumber(qty)} ${unit}`).join(', ');
+                    const remainingDays = earliestExpiryDate ? Math.ceil((new Date(earliestExpiryDate) - new Date()) / (1000 * 60 * 60 * 24)) : '';
+                    return {
+                        '원료명': item.name,
+                        '원료 코드': item.code,
+                        '현 재고': stockStrings,
+                        '가장 빠른 유통기한': earliestExpiryDate,
+                        '잔여일': remainingDays >= 0 ? `${remainingDays}일` : '만료'
+                    };
+                }).filter(item => item['현 재고'] !== '');
+
+
+                const wsReceiving = XLSX.utils.json_to_sheet(receivingExportData);
+                const wsIssuing = XLSX.utils.json_to_sheet(issuingExportData);
+                const wsInventory = XLSX.utils.json_to_sheet(inventoryExportData);
+
+                XLSX.utils.book_append_sheet(wb, wsReceiving, "입고내역");
+                XLSX.utils.book_append_sheet(wb, wsIssuing, "출고내역");
+                XLSX.utils.book_append_sheet(wb, wsInventory, "재고현황");
+
+                const today = new Date().toISOString().slice(0, 10);
+                XLSX.writeFile(wb, `원료수불부_${today}.xlsx`);
+                showNotification('엑셀 파일이 다운로드되었습니다.');
+
+            } catch (error) {
+                console.error("Excel generation failed: ", error);
+                showNotification('엑셀 생성에 실패했습니다.', true);
+            }
         }
     </script>
 </body>
