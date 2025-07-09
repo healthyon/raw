@@ -695,9 +695,25 @@
 
         function renderInventory() {
             const inventory = {};
-            const issuedQtys = {};
+            const issuedQtysInKg = {};
+
             globalIssuingData.forEach(issue => {
-                issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + parseFormattedNumber(issue.quantity);
+                const receivingDoc = globalReceivingData.find(r => r.id === issue.receivingId);
+                const sg = receivingDoc ? (parseFloat(receivingDoc.specificGravity) || 1) : 1;
+                const issueQty = parseFormattedNumber(issue.quantity);
+                const issueUnit = (issue.unit || '').toLowerCase();
+                let issueInKg = 0;
+
+                if (issueUnit === 'kg') {
+                    issueInKg = issueQty;
+                } else if (issueUnit === 'l') {
+                    issueInKg = issueQty * sg;
+                } else if (issueUnit === 'ml') {
+                    issueInKg = (issueQty * sg) / 1000;
+                } else {
+                    issueInKg = issueQty; // Assume weight-based if not volume
+                }
+                issuedQtysInKg[issue.receivingId] = (issuedQtysInKg[issue.receivingId] || 0) + issueInKg;
             });
 
             globalReceivingData.forEach(item => {
@@ -705,9 +721,37 @@
                 if (!inventory[key]) {
                     inventory[key] = { name: item.materialName, code: item.materialCode, stock: {}, batches: [] };
                 }
-                const remainingStock = parseFormattedNumber(item.quantity) - (issuedQtys[item.id] || 0);
-                if (remainingStock > 0) {
-                    inventory[key].batches.push({ ...item, remainingStock });
+
+                const sg = parseFloat(item.specificGravity) || 1;
+                const itemQty = parseFormattedNumber(item.quantity);
+                const itemUnit = (item.unit || '').toLowerCase();
+                let itemQtyInKg = 0;
+
+                if (itemUnit === 'kg') {
+                    itemQtyInKg = itemQty;
+                } else if (itemUnit === 'l') {
+                    itemQtyInKg = itemQty * sg;
+                } else if (itemUnit === 'ml') {
+                    itemQtyInKg = (itemQty * sg) / 1000;
+                } else {
+                    itemQtyInKg = itemQty; // Assume weight-based
+                }
+
+                const totalIssuedInKg = issuedQtysInKg[item.id] || 0;
+                const remainingStockInKg = itemQtyInKg - totalIssuedInKg;
+
+                if (remainingStockInKg > 0.0001) { // Use a small epsilon to avoid floating point issues
+                    let remainingStockInOriginalUnit;
+                    if (itemUnit === 'kg' || sg === 0) {
+                        remainingStockInOriginalUnit = remainingStockInKg;
+                    } else if (itemUnit === 'l') {
+                        remainingStockInOriginalUnit = remainingStockInKg / sg;
+                    } else if (itemUnit === 'ml') {
+                        remainingStockInOriginalUnit = (remainingStockInKg * 1000) / sg;
+                    } else {
+                        remainingStockInOriginalUnit = remainingStockInKg;
+                    }
+                    inventory[key].batches.push({ ...item, remainingStock: remainingStockInOriginalUnit });
                 }
             });
 
@@ -715,13 +759,25 @@
                 const stockByUnit = {};
                 let earliestExpiryDate = null;
                 let earliestBatch = null;
+                let totalKg = 0;
 
                 item.batches.forEach(batch => {
-                    const unit = batch.unit || 'N/A';
-                    if (!stockByUnit[unit]) {
-                        stockByUnit[unit] = 0;
+                    const unit = (batch.unit || 'N/A').toLowerCase();
+                    const sg = parseFloat(batch.specificGravity) || 1;
+                    const stock = batch.remainingStock;
+
+                    if (unit === 'kg') {
+                        totalKg += stock;
+                    } else if (unit === 'l') {
+                        totalKg += stock * sg;
+                    } else if (unit === 'ml') {
+                        totalKg += (stock * sg) / 1000;
                     }
-                    stockByUnit[unit] += batch.remainingStock;
+
+                    if (!stockByUnit[batch.unit]) {
+                        stockByUnit[batch.unit] = 0;
+                    }
+                    stockByUnit[batch.unit] += stock;
 
                     if (!earliestExpiryDate || new Date(batch.expiryDate) < new Date(earliestExpiryDate)) {
                         earliestExpiryDate = batch.expiryDate;
@@ -729,7 +785,17 @@
                     }
                 });
 
-                const stockStrings = Object.entries(stockByUnit).map(([unit, qty]) => `${formatNumber(qty)} ${unit}`).join(', ');
+                const hasKgReceiving = globalReceivingData.some(r => r.materialName === item.name && r.materialCode === item.code && (r.unit || '').toLowerCase() === 'kg');
+                const hasKgIssuing = globalIssuingData.some(i => i.materialName === item.name && i.materialCode === item.code && (i.unit || '').toLowerCase() === 'kg');
+
+                let stockStrings = '';
+                if (hasKgReceiving || hasKgIssuing) {
+                    if (totalKg > 0) {
+                        stockStrings = `${formatNumber(totalKg.toFixed(2))} kg`;
+                    }
+                } else {
+                    stockStrings = Object.entries(stockByUnit).map(([unit, qty]) => `${formatNumber(qty)} ${unit}`).join(', ');
+                }
                 
                 return { 
                     name: item.name, 
@@ -765,11 +831,62 @@
 
 
         function renderReceivingList() {
-            const issuedQtys = {};
+            const issuedQtysInKg = {};
             globalIssuingData.forEach(issue => {
-                issuedQtys[issue.receivingId] = (issuedQtys[issue.receivingId] || 0) + parseFormattedNumber(issue.quantity);
+                const receivingDoc = globalReceivingData.find(r => r.id === issue.receivingId);
+                const sg = receivingDoc ? (parseFloat(receivingDoc.specificGravity) || 1) : 1;
+                const issueQty = parseFormattedNumber(issue.quantity);
+                const issueUnit = (issue.unit || '').toLowerCase();
+                let issueInKg = 0;
+
+                if (issueUnit === 'kg') {
+                    issueInKg = issueQty;
+                } else if (issueUnit === 'l') {
+                    issueInKg = issueQty * sg;
+                } else if (issueUnit === 'ml') {
+                    issueInKg = (issueQty * sg) / 1000;
+                } else {
+                    issueInKg = issueQty;
+                }
+                issuedQtysInKg[issue.receivingId] = (issuedQtysInKg[issue.receivingId] || 0) + issueInKg;
             });
-            let receivingData = globalReceivingData.map(item => { const remainingStock = parseFormattedNumber(item.quantity) - (issuedQtys[item.id] || 0); const expiryDate = new Date(item.expiryDate); const today = new Date(); today.setHours(0,0,0,0); const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)); return { ...item, remainingStock, remainingDays }; });
+
+            let receivingData = globalReceivingData.map(item => {
+                const sg = parseFloat(item.specificGravity) || 1;
+                const itemQty = parseFormattedNumber(item.quantity);
+                const itemUnit = (item.unit || '').toLowerCase();
+                let itemQtyInKg = 0;
+
+                if (itemUnit === 'kg') {
+                    itemQtyInKg = itemQty;
+                } else if (itemUnit === 'l') {
+                    itemQtyInKg = itemQty * sg;
+                } else if (itemUnit === 'ml') {
+                    itemQtyInKg = (itemQty * sg) / 1000;
+                } else {
+                    itemQtyInKg = itemQty;
+                }
+
+                const totalIssuedInKg = issuedQtysInKg[item.id] || 0;
+                const remainingStockInKg = itemQtyInKg - totalIssuedInKg;
+                
+                let remainingStock; // This is in original unit
+                if (itemUnit === 'kg' || sg === 0) {
+                    remainingStock = remainingStockInKg;
+                } else if (itemUnit === 'l') {
+                    remainingStock = remainingStockInKg / sg;
+                } else if (itemUnit === 'ml') {
+                    remainingStock = (remainingStockInKg * 1000) / sg;
+                } else {
+                    remainingStock = remainingStockInKg;
+                }
+
+                const expiryDate = new Date(item.expiryDate);
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                return { ...item, remainingStock, remainingDays };
+            });
             const processedData = getFilteredAndSortedData(receivingData, uiElements.searchInputs.receiving, uiElements.searchFilters.receiving, 'receiving', ['date', 'materialName', 'materialCode', 'testNo', 'supplier', 'quantity', 'remainingStock', 'expiryDate', 'remainingDays', 'remarks']);
             uiElements.receivingList.innerHTML = '';
             processedData.forEach(item => {
@@ -1410,7 +1527,7 @@
             document.getElementById('issue-modal-material-code').textContent = code;
             document.getElementById('issue-modal-batch-stock').textContent = `${formatNumber(stock)} ${unit}`;
             document.getElementById('issue-date').valueAsDate = new Date();
-            document.getElementById('issue-unit').value = unit;
+            document.getElementById('issue-unit').value = 'kg';
             
             const receivingDoc = globalReceivingData.find(r => r.id === id);
             if(receivingDoc) {
