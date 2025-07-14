@@ -108,6 +108,7 @@
                 <button id="save-btn" class="bg-teal-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-teal-700 transition-colors">엑셀 다운</button>
                 <button id="upload-btn" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors">엑셀 업로드</button>
                 <input type="file" id="excel-upload-input" class="hidden" accept=".xlsx, .xls">
+                <button id="settings-btn" title="비밀번호 관리" class="bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 transition-colors">⚙️</button>
             </div>
         </header>
 
@@ -390,21 +391,7 @@
         </div>
     </div>
     
-    <!-- 비밀번호 입력 모달 -->
-    <div id="password-modal" class="modal-backdrop hidden no-print">
-        <div class="modal-content" style="max-width: 400px;">
-            <h3 class="text-xl font-bold mb-4">보안 확인</h3>
-            <p class="text-gray-600 mb-4">작업을 계속하려면 비밀번호를 입력하세요.</p>
-            <form id="password-form">
-                <input type="password" id="password-input" class="p-2 border rounded w-full" placeholder="비밀번호" required>
-                <div id="password-error" class="text-red-500 text-sm mt-2 hidden">비밀번호가 일치하지 않습니다.</div>
-                <div class="mt-6 flex justify-end gap-4">
-                    <button type="button" id="cancel-password" class="bg-gray-300 text-gray-800 p-2 rounded hover:bg-gray-400">취소</button>
-                    <button type="submit" class="bg-teal-600 text-white p-2 rounded hover:bg-teal-700">확인</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    
 
     <!-- 비고 전체 보기 모달 -->
     <div id="remarks-modal" class="modal-backdrop hidden no-print">
@@ -454,11 +441,69 @@
         </div>
     </div>
 
+    <!-- 비밀번호 관리 모달 -->
+    <div id="password-modal" class="modal-backdrop hidden no-print">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">비밀번호 관리</h3>
+                <button id="close-password-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <form id="password-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="password-receiving-edit" class="block text-sm font-medium text-gray-700">입고 수정</label>
+                        <input type="password" id="password-receiving-edit" class="p-2 border rounded w-full" required>
+                    </div>
+                    <div>
+                        <label for="password-receiving-delete" class="block text-sm font-medium text-gray-700">입고 삭제</label>
+                        <input type="password" id="password-receiving-delete" class="p-2 border rounded w-full" required>
+                    </div>
+                    <div>
+                        <label for="password-issuing-edit" class="block text-sm font-medium text-gray-700">출고 수정</label>
+                        <input type="password" id="password-issuing-edit" class="p-2 border rounded w-full" required>
+                    </div>
+                    <div>
+                        <label for="password-issuing-delete" class="block text-sm font-medium text-gray-700">출고 삭제</label>
+                        <input type="password" id="password-issuing-delete" class="p-2 border rounded w-full" required>
+                    </div>
+                    <div>
+                        <label for="password-excel-download" class="block text-sm font-medium text-gray-700">엑셀 다운로드</label>
+                        <input type="password" id="password-excel-download" class="p-2 border rounded w-full" required>
+                    </div>
+                    <div>
+                        <label for="password-excel-upload" class="block text-sm font-medium text-gray-700">엑셀 업로드</label>
+                        <input type="password" id="password-excel-upload" class="p-2 border rounded w-full" required>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-4">
+                    <button type="button" id="cancel-password-change" class="bg-gray-300 text-gray-800 p-2 rounded hover:bg-gray-400">취소</button>
+                    <button type="submit" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 엑셀 업로드 방식 선택 모달 -->
+    <div id="upload-choice-modal" class="modal-backdrop hidden no-print">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 class="text-xl font-bold mb-4">엑셀 업로드 방식 선택</h3>
+            <p class="mb-6">어떤 방식으로 데이터를 업로드하시겠습니까?</p>
+            <div class="flex justify-end gap-4">
+                <button id="upload-append-btn" class="bg-green-600 text-white p-2 rounded hover:bg-green-700">추가하기</button>
+                <button id="upload-overwrite-btn" class="bg-red-600 text-white p-2 rounded hover:bg-red-700">덮어쓰기</button>
+                <button id="cancel-upload-choice-btn" class="bg-gray-300 text-gray-800 p-2 rounded hover:bg-gray-400">취소</button>
+            </div>
+            <p class="text-sm text-gray-600 mt-4">
+                <strong>추가하기:</strong> 기존 데이터를 유지하고 엑셀의 데이터를 추가합니다.<br>
+                <strong>덮어쓰기:</strong> 기존의 모든 데이터를 삭제하고 엑셀 데이터로 교체합니다.
+            </p>
+        </div>
+    </div>
+
     <script type="module">
         // Firebase SDK imports and config
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyAMKGrBLshg6lpO0pCtp7jdIhiCjAmM1WQ",
@@ -470,7 +515,7 @@
         };
 
         // --- 아래 코드는 수정할 필요 없습니다. ---
-        let app, db, auth, userId, appId;
+        let app, db, appId;
         let receivingCollection, issuingCollection, unitsCollection;
         let globalReceivingData = [], globalIssuingData = [], globalUnitsData = [];
         let sortState = {};
@@ -490,21 +535,10 @@
             appId = typeof __app_id !== 'undefined' ? __app_id : configToUse.projectId || 'default-app-id';
             app = initializeApp(configToUse);
             db = getFirestore(app);
-            auth = getAuth(app);
             isDbReady = true;
 
-            onAuthStateChanged(auth, user => {
-                if (user) {
-                    userId = user.uid;
-                    initializeCollections();
-                    loadAndRenderData();
-                } else {
-                    signInAnonymously(auth).catch(error => {
-                        console.error("Anonymous sign-in failed:", error);
-                        isDbReady = false;
-                    });
-                }
-            });
+            initializeCollections();
+            loadAndRenderData();
 
         } catch (e) {
             console.error("Firebase initialization failed:", e);
@@ -544,11 +578,6 @@
                 receiveSpecificGravityInput: document.getElementById('receive-specific-gravity'),
                 printBtn: document.getElementById('print-btn'),
                 saveBtn: document.getElementById('save-btn'),
-                passwordModal: document.getElementById('password-modal'),
-                passwordForm: document.getElementById('password-form'),
-                passwordInput: document.getElementById('password-input'),
-                passwordError: document.getElementById('password-error'),
-                cancelPasswordBtn: document.getElementById('cancel-password'),
                 receivingForm: document.getElementById('receiving-form'),
                 issuingForm: document.getElementById('issuing-form'),
                 receivingList: document.getElementById('receiving-list'),
@@ -577,20 +606,40 @@
         // --- Formatting Utility ---
         function formatNumber(num) {
             if (num === null || num === undefined) return '';
-            return Number(num).toLocaleString('en-US');
+            let numStr = String(num);
+
+            if (numStr.endsWith('.')) {
+                let numPart = numStr.slice(0, -1).replace(/,/g, '');
+                if (isNaN(numPart) || numPart.includes('.')) {
+                    return numStr.slice(0, -1);
+                }
+                return Number(numPart).toLocaleString('en-US') + '.';
+            }
+            
+            let number = Number(numStr.replace(/,/g, ''));
+            if (isNaN(number)) return numStr;
+
+            return number.toLocaleString('en-US', {maximumFractionDigits: 3});
         }
 
         function formatNumberInput(e) {
             const input = e.target;
             let value = input.value;
             const originalValue = value.replace(/,/g, '');
-            
-            if (isNaN(originalValue) || originalValue.trim() === '') {
-                input.value = '';
-            } else {
-                const formattedValue = formatNumber(originalValue);
-                input.value = formattedValue;
+
+            const parts = originalValue.split('.');
+            if (parts[1] && parts[1].length > 3) {
+                input.value = value.slice(0, -1);
+                return;
             }
+            
+            if (isNaN(originalValue) && !(originalValue.endsWith('.') && (originalValue.match(/\./g) || []).length === 1)) {
+                 input.value = '';
+                 return;
+            }
+
+            const formattedValue = formatNumber(originalValue);
+            input.value = formattedValue;
         }
 
         function parseFormattedNumber(value) {
@@ -629,12 +678,32 @@
             }, 3000);
         }
 
+        function checkPassword(type) {
+            const password = prompt("비밀번호를 입력하세요.");
+            let correctPassword;
+            if (type === 'admin') {
+                correctPassword = '930112';
+            } else {
+                correctPassword = localStorage.getItem(`password-${type}`) || '0000';
+            }
+
+            if (password === correctPassword) {
+                return true;
+            } else {
+                if (password !== null) { // 사용자가 취소를 누르지 않았을 경우
+                    showNotification('비밀번호가 올바르지 않습니다.', true);
+                }
+                return false;
+            }
+        }
+
         function initializeCollections() {
-            if (!userId || !isDbReady) return;
-            const userPath = `artifacts/${appId}/users/${userId}`;
-            receivingCollection = collection(db, `${userPath}/receiving`);
-            issuingCollection = collection(db, `${userPath}/issuing`);
-            unitsCollection = collection(db, `${userPath}/units`);
+            if (!isDbReady) return;
+            console.log("Firebase is ready, initializing collections."); // 이 줄을 추가합니다.
+            const commonPath = `artifacts/${appId}`;
+            receivingCollection = collection(db, `${commonPath}/receiving`);
+            issuingCollection = collection(db, `${commonPath}/issuing`);
+            unitsCollection = collection(db, `${commonPath}/units`);
         }
 
         // --- Data Processing ---
@@ -674,7 +743,7 @@
 
         // --- Data Loading and Rendering ---
         function loadAndRenderData() {
-            if (!userId || !isDbReady) return;
+            if (!isDbReady) return;
             
             // Load Units first
             onSnapshot(unitsCollection, (unitSnapshot) => {
@@ -789,10 +858,8 @@
                 const hasKgIssuing = globalIssuingData.some(i => i.materialName === item.name && i.materialCode === item.code && (i.unit || '').toLowerCase() === 'kg');
 
                 let stockStrings = '';
-                if (hasKgReceiving || hasKgIssuing) {
-                    if (totalKg > 0) {
-                        stockStrings = `${formatNumber(totalKg.toFixed(2))} kg`;
-                    }
+                if (totalKg > 0) {
+                    stockStrings = `${formatNumber(totalKg.toFixed(3))} kg`;
                 } else {
                     stockStrings = Object.entries(stockByUnit).map(([unit, qty]) => `${formatNumber(qty)} ${unit}`).join(', ');
                 }
@@ -961,7 +1028,7 @@
                 }
                 
                 const originalText = `${formatNumber(originalQuantity)} ${originalUnit} (비중: ${specificGravity})`;
-                const convertedText = `${formatNumber(convertedKg.toFixed(2))} KG`;
+                const convertedText = `${formatNumber(convertedKg.toFixed(3))} KG`;
 
                 return `<td class="table-cell">
                             <span class="converted-value" 
@@ -1049,17 +1116,25 @@
                 if (e.target.classList.contains('issue-btn')) {
                     openIssueModal(e);
                 } else if (e.target.classList.contains('edit-btn')) {
-                    handleEditClick(e.target.dataset.id);
+                    if (checkPassword('receiving-edit')) {
+                        handleEditClick(e.target.dataset.id);
+                    }
                 } else if (e.target.classList.contains('delete-btn')) {
-                    handleDeleteClick(e.target.dataset.id);
+                    if (checkPassword('receiving-delete')) {
+                        handleDeleteClick(e.target.dataset.id);
+                    }
                 }
             });
             
             uiElements.issuingList.addEventListener('click', (e) => {
                 if (e.target.classList.contains('edit-issuing-btn')) {
-                    handleEditIssuingClick(e.target.dataset.id);
+                    if (checkPassword('issuing-edit')) {
+                        handleEditIssuingClick(e.target.dataset.id);
+                    }
                 } else if (e.target.classList.contains('delete-issuing-btn')) {
-                    handleDeleteIssuingClick(e.target.dataset.id);
+                    if (checkPassword('issuing-delete')) {
+                        handleDeleteIssuingClick(e.target.dataset.id);
+                    }
                 }
             });
             
@@ -1076,15 +1151,33 @@
 
             // Existing Listeners
             uiElements.printBtn.addEventListener('click', () => window.print());
-            uiElements.uploadBtn.addEventListener('click', () => uiElements.excelUploadInput.click());
+            uiElements.uploadBtn.addEventListener('click', () => {
+                if (checkPassword('excel-upload')) {
+                    document.getElementById('upload-choice-modal').classList.remove('hidden');
+                }
+            });
+
+            document.getElementById('cancel-upload-choice-btn').addEventListener('click', () => {
+                document.getElementById('upload-choice-modal').classList.add('hidden');
+            });
+
+            document.getElementById('upload-append-btn').addEventListener('click', () => {
+                document.getElementById('upload-choice-modal').classList.add('hidden');
+                uiElements.excelUploadInput.dataset.uploadType = 'append';
+                uiElements.excelUploadInput.click();
+            });
+
+            document.getElementById('upload-overwrite-btn').addEventListener('click', () => {
+                document.getElementById('upload-choice-modal').classList.add('hidden');
+                uiElements.excelUploadInput.dataset.uploadType = 'overwrite';
+                uiElements.excelUploadInput.click();
+            });
             uiElements.excelUploadInput.addEventListener('change', handleExcelUpload);
             uiElements.saveBtn.addEventListener('click', () => {
-                currentAction.type = 'save';
-                uiElements.passwordModal.classList.remove('hidden');
-                uiElements.passwordInput.focus();
+                if (checkPassword('excel-download')) {
+                    generateAndDownloadExcel();
+                }
             });
-            uiElements.cancelPasswordBtn.addEventListener('click', closePasswordModal);
-            uiElements.passwordForm.addEventListener('submit', handlePasswordSubmit);
             uiElements.receivingForm.addEventListener('submit', handleReceivingSubmit);
             uiElements.issuingForm.addEventListener('submit', handleIssuingSubmit);
             uiElements.inventoryList.addEventListener('click', (e) => handleDetailClick(e));
@@ -1113,11 +1206,37 @@
                     }
                 }
             });
+
+            // Password Modal Listeners
+            document.getElementById('settings-btn').addEventListener('click', () => {
+                if (checkPassword('admin')) {
+                    document.getElementById('password-receiving-edit').value = localStorage.getItem('password-receiving-edit') || '0000';
+                    document.getElementById('password-receiving-delete').value = localStorage.getItem('password-receiving-delete') || '0000';
+                    document.getElementById('password-issuing-edit').value = localStorage.getItem('password-issuing-edit') || '0000';
+                    document.getElementById('password-issuing-delete').value = localStorage.getItem('password-issuing-delete') || '0000';
+                    document.getElementById('password-excel-download').value = localStorage.getItem('password-excel-download') || '0000';
+                    document.getElementById('password-excel-upload').value = localStorage.getItem('password-excel-upload') || '0000';
+                    document.getElementById('password-modal').classList.remove('hidden');
+                }
+            });
+            document.getElementById('close-password-modal').addEventListener('click', () => document.getElementById('password-modal').classList.add('hidden'));
+            document.getElementById('cancel-password-change').addEventListener('click', () => document.getElementById('password-modal').classList.add('hidden'));
+            document.getElementById('password-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                localStorage.setItem('password-receiving-edit', document.getElementById('password-receiving-edit').value);
+                localStorage.setItem('password-receiving-delete', document.getElementById('password-receiving-delete').value);
+                localStorage.setItem('password-issuing-edit', document.getElementById('password-issuing-edit').value);
+                localStorage.setItem('password-issuing-delete', document.getElementById('password-issuing-delete').value);
+                localStorage.setItem('password-excel-download', document.getElementById('password-excel-download').value);
+                localStorage.setItem('password-excel-upload', document.getElementById('password-excel-upload').value);
+                showNotification('비밀번호가 저장되었습니다.');
+                document.getElementById('password-modal').classList.add('hidden');
+            });
         }
 
         async function handleUnitFormSubmit(e) {
             e.preventDefault();
-            if (!isDbReady || !userId) {
+            if (!isDbReady) {
                 showNotification('데이터베이스에 연결되지 않아 저장할 수 없습니다.', true);
                 return;
             }
@@ -1160,7 +1279,7 @@
 
         async function handleDeleteUnit(id) {
             if (confirm('이 단위를 삭제하시겠습니까? 이 단위를 사용한 기존 데이터에는 영향을 주지 않습니다.')) {
-                 if (!isDbReady || !userId) {
+                 if (!isDbReady) {
                     showNotification('데이터베이스에 연결되지 않아 삭제할 수 없습니다.', true);
                     return;
                 }
@@ -1176,49 +1295,19 @@
         }
         
         function handleEditClick(id) {
-            currentAction = { type: 'edit', id: id };
-            uiElements.passwordModal.classList.remove('hidden');
-            uiElements.passwordInput.focus();
+            openEditModal(id);
         }
 
         function handleDeleteClick(id) {
-            currentAction = { type: 'delete', id: id };
-            uiElements.passwordModal.classList.remove('hidden');
-            uiElements.passwordInput.focus();
+            performDelete(id);
         }
 
         function handleEditIssuingClick(id) {
-            currentAction = { type: 'edit-issuing', id: id };
-            uiElements.passwordModal.classList.remove('hidden');
-            uiElements.passwordInput.focus();
+            openEditIssuingModal(id);
         }
 
         function handleDeleteIssuingClick(id) {
-            currentAction = { type: 'delete-issuing', id: id };
-            uiElements.passwordModal.classList.remove('hidden');
-            uiElements.passwordInput.focus();
-        }
-
-        function handlePasswordSubmit(e) {
-            e.preventDefault();
-            if (uiElements.passwordInput.value === '0000') {
-                if (currentAction.type === 'edit') {
-                    openEditModal(currentAction.id);
-                } else if (currentAction.type === 'delete') {
-                    performDelete(currentAction.id);
-                } else if (currentAction.type === 'edit-issuing') {
-                    openEditIssuingModal(currentAction.id);
-                } else if (currentAction.type === 'delete-issuing') {
-                    performDeleteIssuing(currentAction.id);
-                } else if (currentAction.type === 'save') {
-                    generateAndDownloadExcel();
-                } else if (currentAction.type === 'upload') {
-                    processExcelUpload(currentAction.fileInput.files[0]);
-                }
-                closePasswordModal();
-            } else {
-                uiElements.passwordError.classList.remove('hidden');
-            }
+            performDeleteIssuing(id);
         }
 
         function openEditModal(id) {
@@ -1507,12 +1596,7 @@
             }
         }
 
-        function closePasswordModal() {
-            uiElements.passwordInput.value = '';
-            uiElements.passwordError.classList.add('hidden');
-            uiElements.passwordModal.classList.add('hidden');
-            currentAction = { type: null, id: null };
-        }
+        
 
         function openIssueModal(e) {
             const button = e.target;
@@ -1626,14 +1710,13 @@
 
         function handleExcelUpload(event) {
             const fileInput = event.target;
+            const uploadType = fileInput.dataset.uploadType || 'overwrite'; // Default to overwrite for safety
             if (fileInput.files.length > 0) {
-                currentAction = { type: 'upload', fileInput: fileInput };
-                uiElements.passwordModal.classList.remove('hidden');
-                uiElements.passwordInput.focus();
+                processExcelUpload(fileInput.files[0], uploadType);
             }
         }
 
-        async function processExcelUpload(file) {
+        async function processExcelUpload(file, uploadType) {
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
@@ -1650,8 +1733,14 @@
                     const receivingData = XLSX.utils.sheet_to_json(receivingSheet);
                     const issuingData = issuingSheet ? XLSX.utils.sheet_to_json(issuingSheet) : [];
                     
-                    if (confirm('엑셀 파일의 데이터로 전체 데이터를 덮어쓰시겠습니까? 기존의 모든 데이터가 삭제됩니다.')) {
-                        await clearAndUploadData(receivingData, issuingData);
+                    if (uploadType === 'overwrite') {
+                        if (confirm('엑셀 파일의 데이터로 전체 데이터를 덮어쓰시겠습니까? 기존의 모든 데이터가 삭제됩니다.')) {
+                            await clearAndUploadData(receivingData, issuingData);
+                        }
+                    } else { // append
+                        if (confirm('엑셀 파일의 데이터를 기존 데이터에 추가하시겠습니까?')) {
+                            await appendData(receivingData, issuingData);
+                        }
                     }
 
                 } catch (error) {
@@ -1690,6 +1779,15 @@
             showNotification('기존 데이터 삭제 완료. 새 데이터 업로드 중...');
 
             // Upload new data
+            await appendData(receivingData, issuingData, true);
+        }
+
+        async function appendData(receivingData, issuingData, isOverwrite = false) {
+            if (!isDbReady) {
+                showNotification('데이터베이스에 연결되지 않았습니다.', true);
+                return;
+            }
+
             const uploadBatch = writeBatch(db);
             const receivingMap = new Map(); // To map old ID to new doc ref
 
@@ -1735,7 +1833,8 @@
             }
 
             await uploadBatch.commit();
-            showNotification('엑셀 데이터 업로드가 완료되었습니다.');
+            const message = isOverwrite ? '엑셀 데이터 덮어쓰기가 완료되었습니다.' : '엑셀 데이터 추가가 완료되었습니다.';
+            showNotification(message);
         }
 
         function generateAndDownloadExcel() {
