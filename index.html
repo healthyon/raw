@@ -709,6 +709,35 @@
             }, 3000);
         }
 
+        function formatDateFromExcel(data) {
+            if (data instanceof Date) {
+                const year = data.getFullYear();
+                const month = String(data.getMonth() + 1).padStart(2, '0');
+                const day = String(data.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            // Handle Excel serial date number
+            if (typeof data === 'number') {
+                const d = new Date(Math.round((data - 25569) * 86400 * 1000));
+                const year = d.getUTCFullYear();
+                const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(d.getUTCDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            // If it's already a string, try to parse it to clean it up
+            if (typeof data === 'string') {
+                const d = new Date(data);
+                if (!isNaN(d.getTime())) {
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                }
+                return data;
+            }
+            return ''; // Return empty for other types
+        }
+
         function checkPassword(type) {
             const password = prompt("비밀번호를 입력하세요.");
             let correctPassword;
@@ -1844,7 +1873,7 @@
 
             for (const item of receivingData) {
                 const newReceivingDoc = {
-                    date: item['입고일'],
+                    date: formatDateFromExcel(item['입고일']),
                     materialName: item['원료명'],
                     materialCode: item['원료 코드'],
                     testNo: item['시험번호'],
@@ -1853,7 +1882,7 @@
                     specificGravity: item['비중'] || '',
                     manufacturer: item['원료사'] || '',
                     supplier: item['업체명'],
-                    expiryDate: item['유통기한'],
+                    expiryDate: formatDateFromExcel(item['유통기한']),
                     remarks: item['비고'] || '',
                     createdAt: getKSTDate()
                 };
@@ -1870,7 +1899,7 @@
                 }
                 const newIssuingDoc = {
                     receivingId: newReceivingId,
-                    date: item['출고일'],
+                    date: formatDateFromExcel(item['출고일']),
                     quantity: item['출고량'],
                     unit: item['단위'],
                     materialName: item['원료명'],
