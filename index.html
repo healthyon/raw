@@ -919,7 +919,7 @@
                     <td class="table-cell">${item.code}</td>
                     <td class="table-cell font-bold">${item.currentStockStr || '0'}</td>
                     <td class="table-cell">${item.earliestExpiryDate}</td>
-                    <td class="table-cell ${item.remainingDays < 30 ? 'text-red-500 font-bold' : ''}">${item.remainingDays >= 0 ? `${item.remainingDays}일` : '만료'}</td>
+                    <td class="table-cell ${item.remainingDays < 60 ? 'text-red-500 font-bold' : ''}">${item.remainingDays >= 0 ? `${item.remainingDays}일` : '만료'}</td>
                     ${remarksCell}
                 `;
             });
@@ -994,7 +994,7 @@
 
                 const row = uiElements.receivingList.insertRow();
                 row.className = 'border-b hover:bg-gray-50';
-                row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium ${materialNameClass}">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td>${quantityCell}${remainingStockCell}<td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell ${item.remainingDays < 30 ? 'text-red-500 font-bold' : ''}">${item.remainingDays >= 0 ? `${item.remainingDays}일` : '만료'}</td>${remarksCell}
+                row.innerHTML = `<td class="table-cell">${item.date}</td><td class="table-cell font-medium ${materialNameClass}">${item.materialName}</td><td class="table-cell">${item.materialCode}</td><td class="table-cell">${item.testNo}</td>${quantityCell}${remainingStockCell}<td class="table-cell">${item.supplier}</td><td class="table-cell">${item.expiryDate}</td><td class="table-cell ${item.remainingDays < 60 ? 'text-red-500 font-bold' : ''}">${item.remainingDays >= 0 ? `${item.remainingDays}일` : '만료'}</td>${remarksCell}
                 <td class="table-cell no-print-col text-center space-x-2">
                     <button data-id="${item.id}" data-name="${item.materialName}" data-code="${item.materialCode}" data-stock="${item.remainingStock}" data-unit="${item.unit || ''}" class="issue-btn text-sm bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 disabled:bg-gray-400" ${item.remainingStock <= 0 ? 'disabled' : ''}>출고</button>
                     <button data-id="${item.id}" class="edit-btn text-sm bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 disabled:bg-gray-400" ${isIssued ? 'disabled title="출고된 내역은 수정할 수 없습니다."' : ''}>수정</button>
