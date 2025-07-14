@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>원료 수불 관리 프로그램</title>
+    <title>한성헬시온 원료 수불부</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- SheetJS 라이브러리 추가 (엑셀 저장용) -->
@@ -99,8 +99,9 @@
 <body class="bg-gray-100 text-gray-800">
 
     <div id="app" class="w-full p-4 md:p-8">
-        <header class="text-center mb-8 no-print">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">원료 수불 관리 프로그램</h1>
+        <header class="relative text-center mb-8 no-print">
+            <div id="current-time-display" class="absolute top-0 right-0 p-4 text-sm md:text-base font-semibold text-gray-700"></div>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">한성헬시온 원료 수불부</h1>
             <p class="text-gray-600 mt-2">원료의 입고, 출고 및 재고를 실시간으로 관리합니다.</p>
             <div class="mt-6 flex justify-center gap-4">
                 <button id="manage-units-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">단위 관리</button>
@@ -666,6 +667,29 @@
             for (let i = 0; i < str.length; i++) strChosung += getChosung(str[i]);
             return strChosung.includes(searchChosung);
         };
+
+        // --- 한국 시간(KST) 반환 유틸리티 ---
+        function getKSTDate() {
+            const now = new Date();
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+            const KST_OFFSET = 9 * 60 * 60 * 1000;
+            return new Date(utc + KST_OFFSET);
+        }
+
+        function updateClock() {
+            const timeDisplay = document.getElementById('current-time-display');
+            if (!timeDisplay) return;
+
+            const kstDate = getKSTDate();
+            const year = kstDate.getFullYear();
+            const month = String(kstDate.getMonth() + 1).padStart(2, '0');
+            const day = String(kstDate.getDate()).padStart(2, '0');
+            const hours = String(kstDate.getHours()).padStart(2, '0');
+            const minutes = String(kstDate.getMinutes()).padStart(2, '0');
+            const seconds = String(kstDate.getSeconds()).padStart(2, '0');
+
+            timeDisplay.textContent = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
         
         // --- Notification Utility ---
         function showNotification(message, isError = false) {
@@ -864,12 +888,17 @@
                     stockStrings = Object.entries(stockByUnit).map(([unit, qty]) => `${formatNumber(qty)} ${unit}`).join(', ');
                 }
                 
+                const today = getKSTDate();
+                today.setHours(0, 0, 0, 0);
+                const expiryDate = earliestBatch ? new Date(earliestBatch.expiryDate + 'T00:00:00') : null;
+                const remainingDays = expiryDate ? Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)) : '';
+                
                 return { 
                     name: item.name, 
                     code: item.code, 
                     currentStockStr: stockStrings, 
                     earliestExpiryDate: earliestBatch ? earliestBatch.expiryDate : '',
-                    remainingDays: earliestBatch ? Math.ceil((new Date(earliestBatch.expiryDate) - new Date()) / (1000 * 60 * 60 * 24)) : '',
+                    remainingDays: remainingDays,
                     remarks: earliestBatch ? earliestBatch.remarks : '',
                     remarksDocId: earliestBatch ? earliestBatch.id : null
                 };
@@ -948,9 +977,9 @@
                     remainingStock = remainingStockInKg;
                 }
 
-                const expiryDate = new Date(item.expiryDate);
-                const today = new Date();
-                today.setHours(0,0,0,0);
+                const today = getKSTDate();
+                today.setHours(0, 0, 0, 0);
+                const expiryDate = new Date(item.expiryDate + 'T00:00:00');
                 const remainingDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
                 return { ...item, remainingStock, remainingDays };
             });
@@ -1088,6 +1117,10 @@
         });
 
         function setupEventListeners() {
+            // Live Clock
+            updateClock();
+            setInterval(updateClock, 1000);
+
             // Number formatting
             uiElements.receiveQuantityInput.addEventListener('input', formatNumberInput);
             uiElements.issueQuantityInput.addEventListener('input', formatNumberInput);
@@ -1363,7 +1396,7 @@
                     supplier: form.querySelector('#edit-receive-supplier').value,
                     expiryDate: form.querySelector('#edit-receive-expiry-date').value,
                     remarks: form.querySelector('#edit-receive-remarks').value,
-                    updatedAt: new Date()
+                    updatedAt: getKSTDate()
                 });
                 showNotification('입고 내역이 수정되었습니다.');
                 uiElements.editReceivingModal.classList.add('hidden');
@@ -1432,7 +1465,7 @@
                     productName: form.querySelector('#edit-issue-product-name').value,
                     mfgNo: form.querySelector('#edit-issue-mfg-no').value,
                     remarks: form.querySelector('#edit-issue-remarks').value,
-                    updatedAt: new Date()
+                    updatedAt: getKSTDate()
                 });
                 showNotification('출고 내역이 수정되었습니다.');
                 document.getElementById('edit-issuing-modal').classList.add('hidden');
@@ -1532,7 +1565,7 @@
                 supplier: form.querySelector('#receive-supplier').value,
                 expiryDate: form.querySelector('#receive-expiry-date').value,
                 remarks: form.querySelector('#receive-remarks').value,
-                createdAt: new Date()
+                createdAt: getKSTDate()
             };
 
             try {
@@ -1573,7 +1606,7 @@
                 productName: form.querySelector('#issue-product-name').value,
                 mfgNo: form.querySelector('#issue-mfg-no').value,
                 remarks: form.querySelector('#issue-remarks').value,
-                createdAt: new Date()
+                createdAt: getKSTDate()
             };
 
             try {
@@ -1610,7 +1643,7 @@
             document.getElementById('issue-modal-material-name').textContent = name;
             document.getElementById('issue-modal-material-code').textContent = code;
             document.getElementById('issue-modal-batch-stock').textContent = `${formatNumber(stock)} ${unit}`;
-            document.getElementById('issue-date').valueAsDate = new Date();
+            document.getElementById('issue-date').valueAsDate = getKSTDate();
             document.getElementById('issue-unit').value = 'kg';
             
             const receivingDoc = globalReceivingData.find(r => r.id === id);
@@ -1698,7 +1731,7 @@
             try {
                 await updateDoc(docRef, { 
                     remarks: newRemarks,
-                    updatedAt: new Date()
+                    updatedAt: getKSTDate()
                 });
                 showNotification('비고가 수정되었습니다.');
                 uiElements.editRemarksModal.classList.add('hidden');
@@ -1803,7 +1836,7 @@
                     supplier: item['업체명'],
                     expiryDate: item['유통기한'],
                     remarks: item['비고'] || '',
-                    createdAt: new Date()
+                    createdAt: getKSTDate()
                 };
                 const newDocRef = doc(receivingCollection);
                 uploadBatch.set(newDocRef, newReceivingDoc);
@@ -1827,7 +1860,7 @@
                     productName: item['제품명'],
                     mfgNo: item['제조번호'],
                     remarks: item['비고'] || '',
-                    createdAt: new Date()
+                    createdAt: getKSTDate()
                 };
                 uploadBatch.set(doc(issuingCollection), newIssuingDoc);
             }
@@ -1900,7 +1933,10 @@
                         }
                     });
                     const stockStrings = Object.entries(stockByUnit).map(([unit, qty]) => `${formatNumber(qty)} ${unit}`).join(', ');
-                    const remainingDays = earliestExpiryDate ? Math.ceil((new Date(earliestExpiryDate) - new Date()) / (1000 * 60 * 60 * 24)) : '';
+                    const today = getKSTDate();
+                    today.setHours(0, 0, 0, 0);
+                    const expiryDate = earliestExpiryDate ? new Date(earliestExpiryDate + 'T00:00:00') : null;
+                    const remainingDays = expiryDate ? Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)) : '';
                     return {
                         '원료명': item.name,
                         '원료 코드': item.code,
@@ -1919,7 +1955,7 @@
                 XLSX.utils.book_append_sheet(wb, wsIssuing, "출고내역");
                 XLSX.utils.book_append_sheet(wb, wsInventory, "재고현황");
 
-                const today = new Date().toISOString().slice(0, 10);
+                const today = getKSTDate().toISOString().slice(0, 10);
                 XLSX.writeFile(wb, `원료수불부_${today}.xlsx`);
                 showNotification('엑셀 파일이 다운로드되었습니다.');
 
