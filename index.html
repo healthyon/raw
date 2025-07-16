@@ -614,20 +614,31 @@
         // --- Formatting Utility ---
         function formatNumber(num) {
             if (num === null || num === undefined) return '';
-            let numStr = String(num);
+            let numStr = String(num).replace(/,/g, '');
 
-            if (numStr.endsWith('.')) {
-                let numPart = numStr.slice(0, -1).replace(/,/g, '');
-                if (isNaN(numPart) || numPart.includes('.')) {
-                    return numStr.slice(0, -1);
-                }
-                return Number(numPart).toLocaleString('en-US') + '.';
+            const parts = numStr.split('.');
+            const integerPart = parts[0];
+            const decimalPart = parts[1];
+
+            if (isNaN(Number(integerPart))) {
+                return numStr;
             }
             
-            let number = Number(numStr.replace(/,/g, ''));
-            if (isNaN(number)) return numStr;
+            const formattedIntegerPart = new Intl.NumberFormat('en-US').format(Number(integerPart || 0));
 
-            return number.toLocaleString('en-US', {maximumFractionDigits: 3});
+            if (integerPart === '' && decimalPart !== undefined) { // Handles inputs like ".123"
+                return '0.' + decimalPart;
+            }
+
+            if (decimalPart !== undefined) {
+                return formattedIntegerPart + '.' + decimalPart;
+            }
+            
+            if (numStr.endsWith('.')) {
+                return formattedIntegerPart + '.';
+            }
+
+            return formattedIntegerPart;
         }
 
         function formatNumberInput(e) {
@@ -635,12 +646,7 @@
             let value = input.value;
             const originalValue = value.replace(/,/g, '');
 
-            const parts = originalValue.split('.');
-            if (parts[1] && parts[1].length > 3) {
-                input.value = value.slice(0, -1);
-                return;
-            }
-            
+            // This validation is from the original code. It clears the input on invalid chars.
             if (isNaN(originalValue) && !(originalValue.endsWith('.') && (originalValue.match(/\./g) || []).length === 1)) {
                  input.value = '';
                  return;
@@ -710,32 +716,37 @@
         }
 
         function formatDateFromExcel(data) {
-            if (data instanceof Date) {
-                const year = data.getFullYear();
-                const month = String(data.getMonth() + 1).padStart(2, '0');
-                const day = String(data.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            }
+            if (!data) return '';
+
+            let date;
             // Handle Excel serial date number
             if (typeof data === 'number') {
-                const d = new Date(Math.round((data - 25569) * 86400 * 1000));
-                const year = d.getUTCFullYear();
-                const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-                const day = String(d.getUTCDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            }
-            // If it's already a string, try to parse it to clean it up
-            if (typeof data === 'string') {
-                const d = new Date(data);
-                if (!isNaN(d.getTime())) {
-                    const year = d.getFullYear();
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
+                // The number 25569 is the number of days from 1900-01-01 to 1970-01-01.
+                // Excel for Windows incorrectly assumes 1900 was a leap year.
+                const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                date = new Date(excelEpoch.getTime() + data * 86400000);
+            } else if (data instanceof Date) {
+                date = data;
+            } else if (typeof data === 'string') {
+                // Try to parse strings like 'YYYY-MM-DD' or 'MM/DD/YYYY'
+                // Adding 'T00:00:00' helps ensure it's parsed as local time midnight
+                const parsed = new Date(data + 'T00:00:00');
+                if (!isNaN(parsed.getTime())) {
+                    date = parsed;
+                } else {
+                    return data; // Return original string if it's not a valid date
                 }
-                return data;
+            } else {
+                return '';
             }
-            return ''; // Return empty for other types
+
+            // At this point, 'date' is a Date object. We want to format it as YYYY-MM-DD
+            // using the date's components in its own timezone, not UTC's.
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+
+            return `${year}-${month}-${day}`;
         }
 
         function checkPassword(type) {
