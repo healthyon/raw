@@ -1032,6 +1032,10 @@
                     remainingStock = remainingStockInKg;
                 }
 
+                if (typeof remainingStock === 'number') {
+                    remainingStock = parseFloat(remainingStock.toFixed(6));
+                }
+
                 const today = getKSTDate();
                 today.setHours(0, 0, 0, 0);
                 const expiryDate = new Date(item.expiryDate + 'T00:00:00');
@@ -1064,7 +1068,13 @@
             processedData.forEach(item => {
                 const receivingDoc = globalReceivingData.find(r => r.id === item.receivingId);
                 const sg = receivingDoc ? receivingDoc.specificGravity : 1;
-                const quantityCell = createQuantityCell(item.quantity, item.unit, sg);
+                
+                let displayQuantity = item.quantity;
+                if (typeof displayQuantity === 'number') {
+                    displayQuantity = parseFloat(displayQuantity.toFixed(6));
+                }
+
+                const quantityCell = createQuantityCell(displayQuantity, item.unit, sg);
                 const remarksCell = createRemarksCell(item.remarks);
                 const materialNameClass = item.updatedAt ? 'text-blue-600 font-bold' : '';
 
