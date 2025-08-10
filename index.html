@@ -903,24 +903,23 @@
                 let manufacturer = '';
 
                 item.batches.forEach(batch => {
-                    const unit = (batch.unit || 'N/A').toLowerCase();
+                    const unit = (batch.unit || 'N/A');
+                    const unitLower = unit.toLowerCase();
                     const sg = parseFloat(batch.specificGravity) || 1;
                     const stock = batch.remainingStock;
 
-                    if (unit === 'kg') {
+                    if (unitLower === 'kg') {
                         totalKg += stock;
-                    } else if (unit === 'l') {
+                    } else if (unitLower === 'l') {
                         totalKg += stock * sg;
-                    } else if (unit === 'ml') {
+                    } else if (unitLower === 'ml') {
                         totalKg += (stock * sg) / 1000;
-                    } else {
-                        totalKg += stock;
                     }
-
-                    if (!stockByUnit[batch.unit]) {
-                        stockByUnit[batch.unit] = 0;
+                    
+                    if (!stockByUnit[unit]) {
+                        stockByUnit[unit] = 0;
                     }
-                    stockByUnit[batch.unit] += stock;
+                    stockByUnit[unit] += stock;
 
                     if (!earliestExpiryDate || new Date(batch.expiryDate) < new Date(earliestExpiryDate)) {
                         earliestExpiryDate = batch.expiryDate;
@@ -931,15 +930,20 @@
                     }
                 });
 
-                const hasKgReceiving = globalReceivingData.some(r => r.materialName === item.name && r.materialCode === item.code && (r.unit || '').toLowerCase() === 'kg');
-                const hasKgIssuing = globalIssuingData.some(i => i.materialName === item.name && i.materialCode === item.code && (i.unit || '').toLowerCase() === 'kg');
+                const kgConvertibleUnits = ['kg', 'l', 'ml'];
+                let stockStrings = [];
 
-                let stockStrings = '';
-                if (totalKg > 0) {
-                    stockStrings = `${formatNumber(totalKg.toFixed(3))} kg`;
-                } else {
-                    stockStrings = Object.entries(stockByUnit).map(([unit, qty]) => `${formatNumber(qty)} ${unit}`).join(', ');
+                if (totalKg > 0.0001) {
+                    stockStrings.push(`${formatNumber(totalKg.toFixed(3))} kg`);
                 }
+
+                const nonKgStock = Object.entries(stockByUnit)
+                    .filter(([unit, qty]) => !kgConvertibleUnits.includes(unit.toLowerCase()))
+                    .map(([unit, qty]) => `${formatNumber(qty)} ${unit}`);
+                
+                stockStrings = stockStrings.concat(nonKgStock);
+                
+                let currentStockStr = stockStrings.join(', ');
                 
                 const today = getKSTDate();
                 today.setHours(0, 0, 0, 0);
@@ -949,7 +953,7 @@
                 return { 
                     name: item.name, 
                     code: item.code, 
-                    currentStockStr: stockStrings, 
+                    currentStockStr: currentStockStr, 
                     manufacturer: manufacturer,
                     earliestExpiryDate: earliestBatch ? earliestBatch.expiryDate : '',
                     remainingDays: remainingDays,
@@ -1154,6 +1158,15 @@
         }
 
         function populateUnitDropdowns() {
+            // Sort units to have 'kg' first, then alphabetically
+            globalUnitsData.sort((a, b) => {
+                if (a.name.toLowerCase() === 'kg') return -1;
+                if (b.name.toLowerCase() === 'kg') return 1;
+                if (a.name < b.name) return -1;
+                if (a.name > b.name) return 1;
+                return 0;
+            });
+
             const options = globalUnitsData.map(unit => `<option value="${unit.name}">${unit.name}</option>`).join('');
             uiElements.receiveUnitSelect.innerHTML = options;
             uiElements.issueUnitSelect.innerHTML = options;
@@ -2004,35 +2017,31 @@
                         }
                     });
                     const stockStrings = Object.entries(stockByUnit).map(([unit, qty]) => `${formatNumber(qty)} ${unit}`).join(', ');
-                    const today = getKSTDate();
-                    today.setHours(0, 0, 0, 0);
-                    const expiryDate = earliestExpiryDate ? new Date(earliestExpiryDate + 'T00:00:00') : null;
-                    const remainingDays = expiryDate ? Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)) : '';
                     return {
                         '원료명': item.name,
                         '원료 코드': item.code,
                         '현 재고': stockStrings,
-                        '가장 빠른 유통기한': earliestExpiryDate,
-                        '잔여일': remainingDays >= 0 ? `${remainingDays}일` : '만료'
+                        '유통기한': earliestExpiryDate
                     };
-                }).filter(item => item['현 재고'] !== '');
+                });
 
+                const inventorySheet = XLSX.utils.json_to_sheet(inventoryExportData);
+                const receivingSheet = XLSX.utils.json_to_sheet(receivingExportData);
+                const issuingSheet = XLSX.utils.json_to_sheet(issuingExportData);
 
-                const wsReceiving = XLSX.utils.json_to_sheet(receivingExportData);
-                const wsIssuing = XLSX.utils.json_to_sheet(issuingExportData);
-                const wsInventory = XLSX.utils.json_to_sheet(inventoryExportData);
+                XLSX.utils.book_append_sheet(wb, inventorySheet, '재고현황');
+                XLSX.utils.book_append_sheet(wb, receivingSheet, '입고내역');
+                XLSX.utils.book_append_sheet(wb, issuingSheet, '출고내역');
 
-                XLSX.utils.book_append_sheet(wb, wsReceiving, "입고내역");
-                XLSX.utils.book_append_sheet(wb, wsIssuing, "출고내역");
-                XLSX.utils.book_append_sheet(wb, wsInventory, "재고현황");
+                const today = new Date();
+                const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                const fileName = `한성헬시온_원료수불부_${dateString}.xlsx`;
 
-                const today = getKSTDate().toISOString().slice(0, 10);
-                XLSX.writeFile(wb, `원료수불부_${today}.xlsx`);
+                XLSX.writeFile(wb, fileName);
                 showNotification('엑셀 파일이 다운로드되었습니다.');
-
             } catch (error) {
-                console.error("Excel generation failed: ", error);
-                showNotification('엑셀 생성에 실패했습니다.', true);
+                console.error("Error generating Excel file:", error);
+                showNotification('엑셀 파일 생성에 실패했습니다.', true);
             }
         }
     </script>
